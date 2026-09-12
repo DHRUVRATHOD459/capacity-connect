@@ -1,34 +1,18 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { Resend } from "resend";
 
 dotenv.config();
 
 const app = express();
 
-/* =========================
-   MIDDLEWARE
-========================= */
-
 app.use(cors());
 app.use(express.json());
 
-/* =========================
-   RESEND
-========================= */
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-/* =========================
-   TEMPORARY OTP STORAGE
-========================= */
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const SENDER_EMAIL = "dhruvrathod12301@gmail.com";
 
 const otpStore = new Map();
-
-/* =========================
-   HEALTH CHECK
-========================= */
 
 app.get("/", (req, res) => {
   res.json({
@@ -37,15 +21,9 @@ app.get("/", (req, res) => {
   });
 });
 
-/* =========================
-   SEND OTP
-========================= */
-
 app.post("/api/send-otp", async (req, res) => {
   try {
     const { email } = req.body;
-
-    /* Validate email */
 
     if (!email || !email.trim()) {
       return res.status(400).json({
@@ -54,15 +32,18 @@ app.post("/api/send-otp", async (req, res) => {
       });
     }
 
-    const emailKey = email.trim().toLowerCase();
+    if (!BREVO_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        message: "Brevo API key is not configured.",
+      });
+    }
 
-    /* Generate 6-digit OTP */
+    const emailKey = email.trim().toLowerCase();
 
     const otp = Math.floor(
       100000 + Math.random() * 900000
     ).toString();
-
-    /* Store OTP for 5 minutes */
 
     otpStore.set(emailKey, {
       otp,
@@ -71,119 +52,109 @@ app.post("/api/send-otp", async (req, res) => {
 
     console.log(`OTP generated for ${emailKey}: ${otp}`);
 
-    /* Send email */
+    const response = await fetch(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "api-key": BREVO_API_KEY,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          sender: {
+            name: "Capacity Connect",
+            email: SENDER_EMAIL,
+          },
+          to: [
+            {
+              email: emailKey,
+            },
+          ],
+          subject: "Your Capacity Connect OTP",
+          htmlContent: `
+            <div style="
+              font-family: Arial, sans-serif;
+              max-width: 500px;
+              margin: 40px auto;
+              padding: 30px;
+              border: 1px solid #e5ebe8;
+              border-radius: 18px;
+              background: #ffffff;
+            ">
+              <h2 style="
+                color: #07885f;
+                margin-bottom: 10px;
+              ">
+                Capacity Connect
+              </h2>
 
-    const { data, error } = await resend.emails.send({
-      from: "Capacity Connect <onboarding@resend.dev>",
+              <p style="
+                color: #555;
+                font-size: 15px;
+              ">
+                Your email verification OTP is:
+              </p>
 
-      to: [emailKey],
+              <div style="
+                font-size: 32px;
+                font-weight: bold;
+                letter-spacing: 8px;
+                padding: 18px;
+                margin: 25px 0;
+                background: #eaf8f3;
+                color: #07885f;
+                text-align: center;
+                border-radius: 12px;
+              ">
+                ${otp}
+              </div>
 
-      subject: "Your Capacity Connect OTP",
+              <p style="
+                color: #555;
+                font-size: 14px;
+              ">
+                This OTP is valid for <strong>5 minutes</strong>.
+              </p>
 
-      html: `
-        <div
-          style="
-            font-family: Arial, sans-serif;
-            max-width: 500px;
-            margin: 40px auto;
-            padding: 30px;
-            border: 1px solid #e5ebe8;
-            border-radius: 18px;
-            background: #ffffff;
-          "
-        >
+              <p style="
+                color: #888;
+                font-size: 13px;
+                margin-top: 25px;
+              ">
+                Please do not share this OTP with anyone.
+              </p>
 
-          <h2
-            style="
-              color: #07885f;
-              margin-bottom: 10px;
-            "
-          >
-            Capacity Connect
-          </h2>
+              <hr style="
+                border: none;
+                border-top: 1px solid #eeeeee;
+                margin: 25px 0;
+              " />
 
-          <p
-            style="
-              color: #555;
-              font-size: 15px;
-            "
-          >
-            Your email verification OTP is:
-          </p>
+              <p style="
+                color: #999;
+                font-size: 12px;
+              ">
+                This is an automated email from Capacity Connect.
+              </p>
+            </div>
+          `,
+        }),
+      }
+    );
 
-          <div
-            style="
-              font-size: 32px;
-              font-weight: bold;
-              letter-spacing: 8px;
-              padding: 18px;
-              margin: 25px 0;
-              background: #eaf8f3;
-              color: #07885f;
-              text-align: center;
-              border-radius: 12px;
-            "
-          >
-            ${otp}
-          </div>
+    const data = await response.json();
 
-          <p
-            style="
-              color: #555;
-              font-size: 14px;
-            "
-          >
-            This OTP is valid for
-            <strong>5 minutes</strong>.
-          </p>
-
-          <p
-            style="
-              color: #888;
-              font-size: 13px;
-              margin-top: 25px;
-            "
-          >
-            Please do not share this OTP with anyone.
-          </p>
-
-          <hr
-            style="
-              border: none;
-              border-top: 1px solid #eeeeee;
-              margin: 25px 0;
-            "
-          />
-
-          <p
-            style="
-              color: #999;
-              font-size: 12px;
-            "
-          >
-            This is an automated email from Capacity Connect.
-          </p>
-
-        </div>
-      `,
-    });
-
-    /* Resend returned an error */
-
-    if (error) {
-      console.error("Resend error:", error);
+    if (!response.ok) {
+      console.error("Brevo error:", data);
 
       otpStore.delete(emailKey);
 
       return res.status(500).json({
         success: false,
-        message:
-          error.message ||
-          "Failed to send OTP.",
+        message: data?.message || "Failed to send OTP.",
       });
     }
-
-    /* Success */
 
     console.log(
       `OTP email sent successfully to ${emailKey}`
@@ -192,7 +163,7 @@ app.post("/api/send-otp", async (req, res) => {
     return res.json({
       success: true,
       message: "OTP sent successfully.",
-      emailId: data?.id,
+      emailId: data?.messageId,
     });
 
   } catch (error) {
@@ -207,15 +178,9 @@ app.post("/api/send-otp", async (req, res) => {
   }
 });
 
-/* =========================
-   VERIFY OTP
-========================= */
-
 app.post("/api/verify-otp", (req, res) => {
   try {
     const { email, otp } = req.body;
-
-    /* Validate */
 
     if (!email || !otp) {
       return res.status(400).json({
@@ -226,31 +191,23 @@ app.post("/api/verify-otp", (req, res) => {
 
     const emailKey = email.trim().toLowerCase();
 
-    /* Find stored OTP */
-
     const storedData = otpStore.get(emailKey);
 
     if (!storedData) {
       return res.status(400).json({
         success: false,
-        message:
-          "OTP not found. Please request a new OTP.",
+        message: "OTP not found. Please request a new OTP.",
       });
     }
-
-    /* Check expiry */
 
     if (Date.now() > storedData.expiresAt) {
       otpStore.delete(emailKey);
 
       return res.status(400).json({
         success: false,
-        message:
-          "OTP expired. Please request a new OTP.",
+        message: "OTP expired. Please request a new OTP.",
       });
     }
-
-    /* Check OTP */
 
     if (storedData.otp !== otp.toString()) {
       return res.status(400).json({
@@ -258,8 +215,6 @@ app.post("/api/verify-otp", (req, res) => {
         message: "Incorrect OTP.",
       });
     }
-
-    /* OTP verified */
 
     otpStore.delete(emailKey);
 
@@ -273,22 +228,14 @@ app.post("/api/verify-otp", (req, res) => {
     });
 
   } catch (error) {
-    console.error(
-      "OTP verification error:",
-      error
-    );
+    console.error("OTP verification error:", error);
 
     return res.status(500).json({
       success: false,
-      message:
-        "Something went wrong while verifying OTP.",
+      message: "Something went wrong while verifying OTP.",
     });
   }
 });
-
-/* =========================
-   START SERVER
-========================= */
 
 const PORT = process.env.PORT || 5000;
 
