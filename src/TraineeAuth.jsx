@@ -99,7 +99,7 @@ function TraineeAuth() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/send-otp",
+        "https://capacity-connect-backend-syln.onrender.com/api/send-otp",
         {
           method: "POST",
           headers: {
@@ -128,7 +128,7 @@ function TraineeAuth() {
       console.error("OTP sending error:", error);
 
       alert(
-        "Unable to connect to the OTP server.\n\nMake sure server.js is running on port 5000."
+        "Unable to connect to the OTP server.\n\nPlease check your internet connection or try again."
       );
     } finally {
       setSendingOtp(false);
@@ -174,7 +174,7 @@ function TraineeAuth() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/verify-otp",
+        "https://capacity-connect-backend-syln.onrender.com/api/verify-otp",
         {
           method: "POST",
           headers: {
@@ -201,7 +201,7 @@ function TraineeAuth() {
       console.error("OTP verification error:", error);
 
       alert(
-        "Unable to connect to the OTP server.\n\nMake sure server.js is running on port 5000."
+        "Unable to connect to the OTP server.\n\nPlease check your internet connection or try again."
       );
     } finally {
       setVerifyingOtp(false);
