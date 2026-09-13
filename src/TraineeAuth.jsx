@@ -16,11 +16,14 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-function TraineeAuth() {
+function TraineeAuth({ onLoginSuccess, onBackToLanding }) {
   const [mode, setMode] = useState("login");
   const [signupStep, setSignupStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
+
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
 
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
@@ -75,23 +78,39 @@ function TraineeAuth() {
     }));
   };
 
-  /* =========================
-     START SIGNUP
-  ========================= */
-
   const startSignup = () => {
     setMode("signup");
     setSignupStep(1);
     setOtp("");
   };
 
-  /* =========================
-     SEND REAL OTP
-  ========================= */
-
   const sendOtp = async () => {
     if (!formData.email.trim()) {
       alert("Please enter your email address first.");
+      return;
+    }
+
+    if (!formData.fullName.trim()) {
+      alert("Please enter your full name.");
+      setSignupStep(1);
+      return;
+    }
+
+    if (!formData.phone.trim()) {
+      alert("Please enter your phone number.");
+      setSignupStep(1);
+      return;
+    }
+
+    if (!formData.password) {
+      alert("Please create a password.");
+      setSignupStep(1);
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      alert("Passwords do not match.");
+      setSignupStep(1);
       return;
     }
 
@@ -113,7 +132,7 @@ function TraineeAuth() {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || !data.success) {
         alert(data.message || "Failed to send OTP.");
         return;
       }
@@ -135,12 +154,89 @@ function TraineeAuth() {
     }
   };
 
-  /* =========================
-     NEXT STEP
-  ========================= */
-
   const nextStep = () => {
+    if (signupStep === 1) {
+      if (!formData.fullName.trim()) {
+        alert("Please enter your full name.");
+        return;
+      }
+
+      if (!formData.email.trim()) {
+        alert("Please enter your email address.");
+        return;
+      }
+
+      if (!formData.phone.trim()) {
+        alert("Please enter your phone number.");
+        return;
+      }
+
+      if (!formData.password) {
+        alert("Please create a password.");
+        return;
+      }
+
+      if (formData.password.length < 6) {
+        alert("Password must contain at least 6 characters.");
+        return;
+      }
+
+      if (!formData.confirmPassword) {
+        alert("Please confirm your password.");
+        return;
+      }
+
+      if (formData.password !== formData.confirmPassword) {
+        alert("Passwords do not match.");
+        return;
+      }
+    }
+
+    if (signupStep === 2) {
+      if (!formData.education) {
+        alert("Please select your education level.");
+        return;
+      }
+
+      if (!formData.course.trim()) {
+        alert("Please enter your course / program.");
+        return;
+      }
+
+      if (!formData.institution.trim()) {
+        alert("Please enter your institution.");
+        return;
+      }
+
+      if (!formData.year.trim()) {
+        alert("Please enter your current year / semester.");
+        return;
+      }
+    }
+
+    if (signupStep === 3) {
+      if (!formData.qualification.trim()) {
+        alert("Please enter your highest qualification.");
+        return;
+      }
+
+      if (!formData.experience.trim()) {
+        alert("Please enter your work experience.");
+        return;
+      }
+
+      if (!formData.interests.trim()) {
+        alert("Please enter your interests.");
+        return;
+      }
+    }
+
     if (signupStep === 4) {
+      if (formData.skills.length === 0) {
+        alert("Please select at least one skill.");
+        return;
+      }
+
       sendOtp();
       return;
     }
@@ -150,19 +246,11 @@ function TraineeAuth() {
     }
   };
 
-  /* =========================
-     PREVIOUS STEP
-  ========================= */
-
   const previousStep = () => {
     if (signupStep > 1) {
       setSignupStep((prev) => prev - 1);
     }
   };
-
-  /* =========================
-     VERIFY REAL OTP
-  ========================= */
 
   const verifyOtp = async () => {
     if (otp.length !== 6) {
@@ -189,10 +277,22 @@ function TraineeAuth() {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || !data.success) {
         alert(data.message || "Invalid OTP.");
         return;
       }
+
+      const user = {
+        ...formData,
+        email: formData.email.trim().toLowerCase(),
+        role: "trainee",
+        emailVerified: true,
+      };
+
+      localStorage.setItem(
+        "capacityConnectTraineeAccount",
+        JSON.stringify(user)
+      );
 
       alert("Email verified successfully! 🎉");
 
@@ -208,31 +308,71 @@ function TraineeAuth() {
     }
   };
 
-  /* =========================
-     LOGIN
-  ========================= */
-
   const handleLogin = () => {
-    alert(
-      "Login system will be connected with the database and trainee dashboard next."
+    const email = loginEmail.trim().toLowerCase();
+
+    if (!email) {
+      alert("Please enter your email address.");
+      return;
+    }
+
+    if (!loginPassword) {
+      alert("Please enter your password.");
+      return;
+    }
+
+    const savedAccount = localStorage.getItem(
+      "capacityConnectTraineeAccount"
     );
+
+    if (!savedAccount) {
+      alert(
+        "No trainee account found.\n\nPlease create your account first."
+      );
+      return;
+    }
+
+    try {
+      const user = JSON.parse(savedAccount);
+
+      if (
+        user.email?.toLowerCase() !== email ||
+        user.password !== loginPassword
+      ) {
+        alert("Incorrect email or password.");
+        return;
+      }
+
+      const loggedInUser = {
+        ...user,
+        role: "trainee",
+      };
+
+      localStorage.setItem(
+        "capacityConnectCurrentUser",
+        JSON.stringify(loggedInUser)
+      );
+
+      if (onLoginSuccess) {
+        onLoginSuccess(loggedInUser);
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("Unable to login. Please try again.");
+    }
   };
 
-  /* =========================
-     BACK TO LANDING
-  ========================= */
-
   const goBackToLanding = () => {
-    window.location.reload();
+    if (onBackToLanding) {
+      onBackToLanding();
+    } else {
+      window.location.reload();
+    }
   };
 
   return (
     <div className="auth-page">
       <div className="auth-container">
-
-        {/* =====================================================
-            LEFT PANEL
-        ===================================================== */}
 
         <div className="auth-brand-panel">
 
@@ -289,17 +429,9 @@ function TraineeAuth() {
           </div>
         </div>
 
-        {/* =====================================================
-            RIGHT PANEL
-        ===================================================== */}
-
         <div className="auth-form-panel">
 
           <div className="auth-form-wrapper">
-
-            {/* =================================================
-                LOGIN
-            ================================================= */}
 
             {mode === "login" && (
               <>
@@ -320,8 +452,6 @@ function TraineeAuth() {
 
                 <div className="auth-form">
 
-                  {/* EMAIL */}
-
                   <div className="auth-field">
 
                     <label>Email Address</label>
@@ -333,13 +463,15 @@ function TraineeAuth() {
                       <input
                         type="email"
                         placeholder="Enter your email"
+                        value={loginEmail}
+                        onChange={(e) =>
+                          setLoginEmail(e.target.value)
+                        }
                       />
 
                     </div>
 
                   </div>
-
-                  {/* PASSWORD */}
 
                   <div className="auth-field">
 
@@ -356,6 +488,10 @@ function TraineeAuth() {
                             : "password"
                         }
                         placeholder="Enter your password"
+                        value={loginPassword}
+                        onChange={(e) =>
+                          setLoginPassword(e.target.value)
+                        }
                       />
 
                       <button
@@ -378,8 +514,6 @@ function TraineeAuth() {
 
                   </div>
 
-                  {/* OPTIONS */}
-
                   <div className="auth-options">
 
                     <label className="remember-option">
@@ -390,13 +524,16 @@ function TraineeAuth() {
                     <button
                       type="button"
                       className="forgot-button"
+                      onClick={() =>
+                        alert(
+                          "Password reset will be connected with the database later."
+                        )
+                      }
                     >
                       Forgot password?
                     </button>
 
                   </div>
-
-                  {/* LOGIN BUTTON */}
 
                   <button
                     type="button"
@@ -406,8 +543,6 @@ function TraineeAuth() {
                     Login
                     <ArrowRight size={18} />
                   </button>
-
-                  {/* CREATE ACCOUNT */}
 
                   <div className="auth-switch">
 
@@ -428,14 +563,8 @@ function TraineeAuth() {
               </>
             )}
 
-            {/* =================================================
-                SIGNUP
-            ================================================= */}
-
             {mode === "signup" && signupStep < 6 && (
               <>
-
-                {/* HEADER */}
 
                 <div className="auth-header">
 
@@ -478,10 +607,6 @@ function TraineeAuth() {
                   </p>
 
                 </div>
-
-                {/* =================================================
-                    PROGRESS
-                ================================================= */}
 
                 {signupStep <= 4 && (
                   <div style={{ marginBottom: "25px" }}>
@@ -536,10 +661,6 @@ function TraineeAuth() {
 
                   </div>
                 )}
-
-                {/* =================================================
-                    STEP 1 — PERSONAL
-                ================================================= */}
 
                 {signupStep === 1 && (
                   <div className="auth-form">
@@ -700,10 +821,6 @@ function TraineeAuth() {
                   </div>
                 )}
 
-                {/* =================================================
-                    STEP 2 — EDUCATION
-                ================================================= */}
-
                 {signupStep === 2 && (
                   <div className="auth-form">
 
@@ -858,10 +975,6 @@ function TraineeAuth() {
                   </div>
                 )}
 
-                {/* =================================================
-                    STEP 3 — QUALIFICATION
-                ================================================= */}
-
                 {signupStep === 3 && (
                   <div className="auth-form">
 
@@ -972,10 +1085,6 @@ function TraineeAuth() {
 
                   </div>
                 )}
-
-                {/* =================================================
-                    STEP 4 — SKILLS
-                ================================================= */}
 
                 {signupStep === 4 && (
                   <div className="auth-form">
@@ -1113,10 +1222,6 @@ function TraineeAuth() {
                   </div>
                 )}
 
-                {/* =================================================
-                    STEP 5 — OTP
-                ================================================= */}
-
                 {signupStep === 5 && (
                   <div className="auth-form">
 
@@ -1233,10 +1338,6 @@ function TraineeAuth() {
               </>
             )}
 
-            {/* =================================================
-                ACCOUNT CREATED
-            ================================================= */}
-
             {mode === "signup" && signupStep === 6 && (
               <div
                 style={{
@@ -1288,6 +1389,8 @@ function TraineeAuth() {
                   onClick={() => {
                     setMode("login");
                     setSignupStep(1);
+                    setLoginEmail(formData.email);
+                    setLoginPassword("");
                   }}
                 >
                   Go to Login

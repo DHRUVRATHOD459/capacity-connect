@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AppDashboard from "./AppDashboard";
 import TraineeAuth from "./TraineeAuth";
 
 import {
@@ -18,14 +19,56 @@ function App() {
   const [showRoles, setShowRoles] = useState(false);
   const [showTraineeAuth, setShowTraineeAuth] = useState(false);
 
-  // TRAINEE AUTH SCREEN
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem(
+        "capacityConnectCurrentUser"
+      );
+
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleLoginSuccess = (user) => {
+    localStorage.setItem(
+      "capacityConnectCurrentUser",
+      JSON.stringify(user)
+    );
+
+    setCurrentUser(user);
+    setShowTraineeAuth(false);
+    setShowRoles(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("capacityConnectCurrentUser");
+    setCurrentUser(null);
+    setShowTraineeAuth(false);
+    setShowRoles(false);
+  };
+
+  if (currentUser?.role === "trainee") {
+    return (
+      <AppDashboard
+        user={currentUser}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
   if (showTraineeAuth) {
-    return <TraineeAuth />;
+    return (
+      <TraineeAuth
+        onLoginSuccess={handleLoginSuccess}
+        onBackToLanding={() => setShowTraineeAuth(false)}
+      />
+    );
   }
 
   return (
     <div className="landing-page">
-      {/* NAVBAR */}
       <nav className="navbar">
         <div className="brand">
           <div className="brand-mark">
@@ -53,7 +96,6 @@ function App() {
         </button>
       </nav>
 
-      {/* HERO */}
       <main>
         <section className="hero-section">
           <div className="hero-content">
@@ -107,7 +149,6 @@ function App() {
             </div>
           </div>
 
-          {/* HERO VISUAL */}
           <div className="hero-visual">
             <div className="visual-glow"></div>
 
@@ -204,7 +245,6 @@ function App() {
           </div>
         </section>
 
-        {/* HOW IT WORKS */}
         <section className="section" id="how-it-works">
           <div className="section-heading">
             <div className="section-badge">HOW IT WORKS</div>
@@ -248,7 +288,6 @@ function App() {
           </div>
         </section>
 
-        {/* FEATURES */}
         <section className="section features-section" id="features">
           <div className="section-heading">
             <div className="section-badge">ONE CONNECTED PLATFORM</div>
@@ -288,7 +327,6 @@ function App() {
           </div>
         </section>
 
-        {/* CTA */}
         <section className="final-cta" id="about">
           <div>
             <div className="section-badge">CAPACITY CONNECT</div>
@@ -311,7 +349,6 @@ function App() {
         </section>
       </main>
 
-      {/* ROLE MODAL */}
       {showRoles && (
         <div
           className="modal-overlay"
@@ -341,7 +378,6 @@ function App() {
             </p>
 
             <div className="role-options">
-              {/* TRAINEE */}
               <RoleCard
                 icon={<GraduationCap size={25} />}
                 title="Trainee"
@@ -352,14 +388,12 @@ function App() {
                 }}
               />
 
-              {/* TRAINER - LATER */}
               <RoleCard
                 icon={<Users size={25} />}
                 title="Trainer"
                 text="Create learning content and support trainees."
               />
 
-              {/* ADMIN - LATER */}
               <RoleCard
                 icon={<ShieldCheck size={25} />}
                 title="Organization Admin"
