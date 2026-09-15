@@ -16,6 +16,9 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 function TraineeAuth({ onLoginSuccess, onBackToLanding }) {
   const [mode, setMode] = useState("login");
   const [signupStep, setSignupStep] = useState(1);
@@ -27,6 +30,7 @@ function TraineeAuth({ onLoginSuccess, onBackToLanding }) {
 
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -108,9 +112,21 @@ function TraineeAuth({ onLoginSuccess, onBackToLanding }) {
       return;
     }
 
+    if (formData.password.length < 6) {
+      alert("Password must contain at least 6 characters.");
+      setSignupStep(1);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       alert("Passwords do not match.");
       setSignupStep(1);
+      return;
+    }
+
+    if (!formData.skills.length) {
+      alert("Please select at least one skill.");
+      setSignupStep(4);
       return;
     }
 
@@ -118,14 +134,28 @@ function TraineeAuth({ onLoginSuccess, onBackToLanding }) {
 
     try {
       const response = await fetch(
-        "https://capacity-connect-backend-syln.onrender.com/api/send-otp",
+        `${API_BASE_URL}/api/send-otp`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            email: formData.email.trim(),
+            fullName: formData.fullName.trim(),
+            email: formData.email.trim().toLowerCase(),
+            phone: formData.phone.trim(),
+            password: formData.password,
+
+            education: formData.education,
+            course: formData.course.trim(),
+            institution: formData.institution.trim(),
+            year: formData.year.trim(),
+
+            qualification: formData.qualification.trim(),
+            experience: formData.experience.trim(),
+            interests: formData.interests.trim(),
+
+            skills: formData.skills,
           }),
         }
       );
@@ -147,7 +177,7 @@ function TraineeAuth({ onLoginSuccess, onBackToLanding }) {
       console.error("OTP sending error:", error);
 
       alert(
-        "Unable to connect to the OTP server.\n\nPlease check your internet connection or try again."
+        "Unable to connect to the backend server.\n\nMake sure the Capacity Connect backend is running on port 5000."
       );
     } finally {
       setSendingOtp(false);
@@ -262,14 +292,14 @@ function TraineeAuth({ onLoginSuccess, onBackToLanding }) {
 
     try {
       const response = await fetch(
-        "https://capacity-connect-backend-syln.onrender.com/api/verify-otp",
+        `${API_BASE_URL}/api/verify-otp`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            email: formData.email.trim(),
+            email: formData.email.trim().toLowerCase(),
             otp: otp,
           }),
         }
@@ -282,15 +312,26 @@ function TraineeAuth({ onLoginSuccess, onBackToLanding }) {
         return;
       }
 
-      const user = {
-        ...formData,
-        email: formData.email.trim().toLowerCase(),
-        role: "trainee",
-        emailVerified: true,
-      };
+      /*
+       * IMPORTANT:
+       * The backend has now created the real PostgreSQL account.
+       * We do NOT save the password or fake account locally.
+       *
+       * Only the safe user object returned by backend is stored
+       * for the current frontend session.
+       */
+
+      const user = data.user;
+
+      if (!user) {
+        alert(
+          "Account was created, but user data was not returned by the server."
+        );
+        return;
+      }
 
       localStorage.setItem(
-        "capacityConnectTraineeAccount",
+        "capacityConnectCurrentUser",
         JSON.stringify(user)
       );
 
@@ -301,14 +342,14 @@ function TraineeAuth({ onLoginSuccess, onBackToLanding }) {
       console.error("OTP verification error:", error);
 
       alert(
-        "Unable to connect to the OTP server.\n\nPlease check your internet connection or try again."
+        "Unable to connect to the backend server.\n\nPlease make sure the backend is running."
       );
     } finally {
       setVerifyingOtp(false);
     }
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const email = loginEmail.trim().toLowerCase();
 
     if (!email) {
@@ -321,44 +362,59 @@ function TraineeAuth({ onLoginSuccess, onBackToLanding }) {
       return;
     }
 
-    const savedAccount = localStorage.getItem(
-      "capacityConnectTraineeAccount"
-    );
-
-    if (!savedAccount) {
-      alert(
-        "No trainee account found.\n\nPlease create your account first."
-      );
-      return;
-    }
+    setLoggingIn(true);
 
     try {
-      const user = JSON.parse(savedAccount);
+      const response = await fetch(
+        `${API_BASE_URL}/api/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password: loginPassword,
+          }),
+        }
+      );
 
-      if (
-        user.email?.toLowerCase() !== email ||
-        user.password !== loginPassword
-      ) {
-        alert("Incorrect email or password.");
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        alert(data.message || "Incorrect email or password.");
         return;
       }
 
-      const loggedInUser = {
-        ...user,
-        role: "trainee",
-      };
+      const user = data.user;
 
+      if (!user) {
+        alert(
+          "Login successful, but user data was not returned by the server."
+        );
+        return;
+      }
+
+      /*
+       * Store only the safe user object returned by backend.
+       * Password is never stored here.
+       */
       localStorage.setItem(
         "capacityConnectCurrentUser",
-        JSON.stringify(loggedInUser)
+        JSON.stringify(user)
       );
 
       if (onLoginSuccess) {
-        onLoginSuccess(loggedInUser);
+        onLoginSuccess(user);
       }
     } catch (error) {
       console.error("Login error:", error);
-      alert("Unable to login. Please try again.");
+
+      alert(
+        "Unable to connect to the backend server.\n\nMake sure the Capacity Connect backend is running on port 5000."
+      );
+    } finally {
+      setLoggingIn(false);
     }
   };
 
@@ -526,7 +582,7 @@ function TraineeAuth({ onLoginSuccess, onBackToLanding }) {
                       className="forgot-button"
                       onClick={() =>
                         alert(
-                          "Password reset will be connected with the database later."
+                          "Password reset will be connected in the next authentication module."
                         )
                       }
                     >
@@ -539,9 +595,19 @@ function TraineeAuth({ onLoginSuccess, onBackToLanding }) {
                     type="button"
                     className="auth-submit-button"
                     onClick={handleLogin}
+                    disabled={loggingIn}
+                    style={{
+                      opacity: loggingIn ? 0.7 : 1,
+                      cursor: loggingIn
+                        ? "not-allowed"
+                        : "pointer",
+                    }}
                   >
-                    Login
-                    <ArrowRight size={18} />
+                    {loggingIn ? "Logging in..." : "Login"}
+
+                    {!loggingIn && (
+                      <ArrowRight size={18} />
+                    )}
                   </button>
 
                   <div className="auth-switch">
@@ -1389,7 +1455,9 @@ function TraineeAuth({ onLoginSuccess, onBackToLanding }) {
                   onClick={() => {
                     setMode("login");
                     setSignupStep(1);
-                    setLoginEmail(formData.email);
+                    setLoginEmail(
+                      formData.email.trim().toLowerCase()
+                    );
                     setLoginPassword("");
                   }}
                 >
