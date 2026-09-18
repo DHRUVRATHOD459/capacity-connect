@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AppDashboard from "./AppDashboard";
 import TraineeAuth from "./TraineeAuth";
+import TrainerAuth from "./TrainerAuth";
 
 import {
   ArrowRight,
@@ -18,6 +19,7 @@ import {
 function App() {
   const [showRoles, setShowRoles] = useState(false);
   const [showTraineeAuth, setShowTraineeAuth] = useState(false);
+  const [showTrainerAuth, setShowTrainerAuth] = useState(false);
 
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -39,16 +41,22 @@ function App() {
 
     setCurrentUser(user);
     setShowTraineeAuth(false);
+    setShowTrainerAuth(false);
     setShowRoles(false);
   };
 
   const handleLogout = () => {
     localStorage.removeItem("capacityConnectCurrentUser");
+
     setCurrentUser(null);
     setShowTraineeAuth(false);
+    setShowTrainerAuth(false);
     setShowRoles(false);
   };
 
+  // =========================
+  // TRAINEE DASHBOARD
+  // =========================
   if (currentUser?.role === "trainee") {
     return (
       <AppDashboard
@@ -58,11 +66,38 @@ function App() {
     );
   }
 
+  // =========================
+  // TRAINER DASHBOARD
+  // =========================
+  if (currentUser?.role === "trainer") {
+    return (
+      <TrainerDashboard
+        user={currentUser}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  // =========================
+  // TRAINEE LOGIN / SIGNUP
+  // =========================
   if (showTraineeAuth) {
     return (
       <TraineeAuth
         onLoginSuccess={handleLoginSuccess}
         onBackToLanding={() => setShowTraineeAuth(false)}
+      />
+    );
+  }
+
+  // =========================
+  // TRAINER LOGIN
+  // =========================
+  if (showTrainerAuth) {
+    return (
+      <TrainerAuth
+        onLoginSuccess={handleLoginSuccess}
+        onBackToLanding={() => setShowTrainerAuth(false)}
       />
     );
   }
@@ -126,7 +161,10 @@ function App() {
                 <ArrowRight size={18} />
               </button>
 
-              <a href="#how-it-works" className="secondary-button">
+              <a
+                href="#how-it-works"
+                className="secondary-button"
+              >
                 Explore Platform
               </a>
             </div>
@@ -155,7 +193,10 @@ function App() {
             <div className="platform-card">
               <div className="platform-card-top">
                 <div>
-                  <div className="small-label">CAPACITY CONNECT</div>
+                  <div className="small-label">
+                    CAPACITY CONNECT
+                  </div>
+
                   <h3>Learning Intelligence</h3>
                 </div>
 
@@ -245,15 +286,22 @@ function App() {
           </div>
         </section>
 
-        <section className="section" id="how-it-works">
+        <section
+          className="section"
+          id="how-it-works"
+        >
           <div className="section-heading">
-            <div className="section-badge">HOW IT WORKS</div>
+            <div className="section-badge">
+              HOW IT WORKS
+            </div>
 
-            <h2>From claimed skills to verified capability.</h2>
+            <h2>
+              From claimed skills to verified capability.
+            </h2>
 
             <p>
-              Capacity Connect creates a continuous cycle of assessment,
-              learning, verification and improvement.
+              Capacity Connect creates a continuous cycle of
+              assessment, learning, verification and improvement.
             </p>
           </div>
 
@@ -288,11 +336,18 @@ function App() {
           </div>
         </section>
 
-        <section className="section features-section" id="features">
+        <section
+          className="section features-section"
+          id="features"
+        >
           <div className="section-heading">
-            <div className="section-badge">ONE CONNECTED PLATFORM</div>
+            <div className="section-badge">
+              ONE CONNECTED PLATFORM
+            </div>
 
-            <h2>Designed around real competency development.</h2>
+            <h2>
+              Designed around real competency development.
+            </h2>
 
             <p>
               Everything required to manage learning, training and
@@ -327,15 +382,22 @@ function App() {
           </div>
         </section>
 
-        <section className="final-cta" id="about">
+        <section
+          className="final-cta"
+          id="about"
+        >
           <div>
-            <div className="section-badge">CAPACITY CONNECT</div>
+            <div className="section-badge">
+              CAPACITY CONNECT
+            </div>
 
-            <h2>Turn learning into measurable capability.</h2>
+            <h2>
+              Turn learning into measurable capability.
+            </h2>
 
             <p>
-              A centralized digital platform for training, competency
-              development and knowledge sharing.
+              A centralized digital platform for training,
+              competency development and knowledge sharing.
             </p>
           </div>
 
@@ -370,14 +432,17 @@ function App() {
               Welcome to Capacity Connect
             </div>
 
-            <h2>How would you like to continue?</h2>
+            <h2>
+              How would you like to continue?
+            </h2>
 
             <p>
-              Select your role to enter the appropriate Capacity Connect
-              experience.
+              Select your role to enter the appropriate
+              Capacity Connect experience.
             </p>
 
             <div className="role-options">
+              {/* TRAINEE */}
               <RoleCard
                 icon={<GraduationCap size={25} />}
                 title="Trainee"
@@ -388,12 +453,18 @@ function App() {
                 }}
               />
 
+              {/* TRAINER */}
               <RoleCard
                 icon={<Users size={25} />}
                 title="Trainer"
                 text="Create learning content and support trainees."
+                onClick={() => {
+                  setShowRoles(false);
+                  setShowTrainerAuth(true);
+                }}
               />
 
+              {/* ADMIN - NOT CONNECTED YET */}
               <RoleCard
                 icon={<ShieldCheck size={25} />}
                 title="Organization Admin"
@@ -402,8 +473,8 @@ function App() {
             </div>
 
             <div className="modal-note">
-              Admin access is restricted to authorized organization
-              administrators.
+              Admin access is restricted to authorized
+              organization administrators.
             </div>
           </div>
         </div>
@@ -412,7 +483,726 @@ function App() {
   );
 }
 
-function ProcessCard({ number, icon, title, text }) {
+/* =========================================================
+   TRAINER DASHBOARD
+   Frontend-only Task 2 prototype
+   ========================================================= */
+
+function TrainerDashboard({ user, onLogout }) {
+  const [activeSection, setActiveSection] =
+    useState("dashboard");
+
+  return (
+    <div className="trainer-dashboard">
+      <aside className="trainer-sidebar">
+        <div className="trainer-brand">
+          <div className="trainer-brand-icon">
+            <Sparkles size={20} />
+          </div>
+
+          <div>
+            <strong>Capacity</strong>
+            <span>CONNECT</span>
+          </div>
+        </div>
+
+        <div className="trainer-profile-mini">
+          <div className="trainer-avatar">
+            {(user?.fullName || "T")
+              .charAt(0)
+              .toUpperCase()}
+          </div>
+
+          <div>
+            <strong>{user?.fullName || "Trainer"}</strong>
+            <span>Trainer</span>
+          </div>
+        </div>
+
+        <nav className="trainer-nav">
+          <TrainerNavItem
+            label="Dashboard"
+            active={activeSection === "dashboard"}
+            onClick={() => setActiveSection("dashboard")}
+          />
+
+          <TrainerNavItem
+            label="My Courses"
+            active={activeSection === "courses"}
+            onClick={() => setActiveSection("courses")}
+          />
+
+          <TrainerNavItem
+            label="Trainees"
+            active={activeSection === "trainees"}
+            onClick={() => setActiveSection("trainees")}
+          />
+
+          <TrainerNavItem
+            label="Assessments"
+            active={activeSection === "assessments"}
+            onClick={() => setActiveSection("assessments")}
+          />
+
+          <TrainerNavItem
+            label="Resources"
+            active={activeSection === "resources"}
+            onClick={() => setActiveSection("resources")}
+          />
+
+          <TrainerNavItem
+            label="Analytics"
+            active={activeSection === "analytics"}
+            onClick={() => setActiveSection("analytics")}
+          />
+
+          <TrainerNavItem
+            label="Feedback"
+            active={activeSection === "feedback"}
+            onClick={() => setActiveSection("feedback")}
+          />
+        </nav>
+
+        <div className="trainer-sidebar-bottom">
+          <button
+            className="trainer-settings"
+            onClick={() => setActiveSection("settings")}
+          >
+            Settings
+          </button>
+
+          <button
+            className="trainer-logout"
+            onClick={onLogout}
+          >
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      <main className="trainer-main">
+        <header className="trainer-topbar">
+          <div>
+            <span className="trainer-page-label">
+              TRAINER WORKSPACE
+            </span>
+
+            <h1>
+              {activeSection === "dashboard"
+                ? "Trainer Dashboard"
+                : activeSection === "courses"
+                ? "My Courses"
+                : activeSection === "trainees"
+                ? "Trainees"
+                : activeSection === "assessments"
+                ? "Assessments"
+                : activeSection === "resources"
+                ? "Learning Resources"
+                : activeSection === "analytics"
+                ? "Analytics"
+                : activeSection === "feedback"
+                ? "Feedback"
+                : "Settings"}
+            </h1>
+          </div>
+
+          <div className="trainer-top-user">
+            <div className="trainer-top-avatar">
+              {(user?.fullName || "T")
+                .charAt(0)
+                .toUpperCase()}
+            </div>
+
+            <div>
+              <strong>{user?.fullName || "Trainer"}</strong>
+              <span>{user?.email}</span>
+            </div>
+          </div>
+        </header>
+
+        {activeSection === "dashboard" && (
+          <TrainerOverview
+            onNavigate={setActiveSection}
+          />
+        )}
+
+        {activeSection === "courses" && (
+          <TrainerCourses />
+        )}
+
+        {activeSection === "trainees" && (
+          <TrainerTrainees />
+        )}
+
+        {activeSection === "assessments" && (
+          <TrainerAssessments />
+        )}
+
+        {activeSection === "resources" && (
+          <TrainerResources />
+        )}
+
+        {activeSection === "analytics" && (
+          <TrainerAnalytics />
+        )}
+
+        {activeSection === "feedback" && (
+          <TrainerFeedback />
+        )}
+
+        {activeSection === "settings" && (
+          <TrainerSettings user={user} />
+        )}
+      </main>
+    </div>
+  );
+}
+
+/* =========================================================
+   TRAINER NAV
+   ========================================================= */
+
+function TrainerNavItem({ label, active, onClick }) {
+  return (
+    <button
+      className={`trainer-nav-item ${
+        active ? "active" : ""
+      }`}
+      onClick={onClick}
+    >
+      {label}
+    </button>
+  );
+}
+
+/* =========================================================
+   TRAINER OVERVIEW
+   ========================================================= */
+
+function TrainerOverview({ onNavigate }) {
+  return (
+    <div className="trainer-content">
+      <div className="trainer-welcome">
+        <div>
+          <span>WELCOME BACK</span>
+
+          <h2>
+            Manage learning. Empower trainees.
+          </h2>
+
+          <p>
+            Create courses, monitor trainee progress and
+            manage your learning workspace.
+          </p>
+        </div>
+
+        <button
+          className="trainer-primary-action"
+          onClick={() => onNavigate("courses")}
+        >
+          + Create Course
+        </button>
+      </div>
+
+      <div className="trainer-stat-grid">
+        <TrainerStat
+          label="Active Courses"
+          value="08"
+          detail="+2 this month"
+        />
+
+        <TrainerStat
+          label="Trainees"
+          value="126"
+          detail="18 active today"
+        />
+
+        <TrainerStat
+          label="Assessments"
+          value="24"
+          detail="6 pending review"
+        />
+
+        <TrainerStat
+          label="Course Completion"
+          value="78%"
+          detail="+6.4% this month"
+        />
+      </div>
+
+      <div className="trainer-dashboard-grid">
+        <div className="trainer-panel">
+          <div className="trainer-panel-header">
+            <div>
+              <span>YOUR COURSES</span>
+              <h3>Course Management</h3>
+            </div>
+
+            <button
+              onClick={() => onNavigate("courses")}
+            >
+              View all
+            </button>
+          </div>
+
+          <div className="trainer-course-row">
+            <div className="trainer-course-icon blue">
+              WD
+            </div>
+
+            <div>
+              <strong>Web Development Fundamentals</strong>
+              <span>42 trainees · 76% completion</span>
+            </div>
+
+            <b>76%</b>
+          </div>
+
+          <div className="trainer-course-row">
+            <div className="trainer-course-icon orange">
+              JS
+            </div>
+
+            <div>
+              <strong>JavaScript Essentials</strong>
+              <span>31 trainees · 64% completion</span>
+            </div>
+
+            <b>64%</b>
+          </div>
+
+          <div className="trainer-course-row">
+            <div className="trainer-course-icon green">
+              UI
+            </div>
+
+            <div>
+              <strong>UI/UX Design Basics</strong>
+              <span>28 trainees · 88% completion</span>
+            </div>
+
+            <b>88%</b>
+          </div>
+        </div>
+
+        <div className="trainer-panel">
+          <div className="trainer-panel-header">
+            <div>
+              <span>TRAINEE ACTIVITY</span>
+              <h3>Recent Activity</h3>
+            </div>
+
+            <button
+              onClick={() => onNavigate("trainees")}
+            >
+              View trainees
+            </button>
+          </div>
+
+          <div className="trainer-activity">
+            <div className="activity-avatar">
+              A
+            </div>
+
+            <div>
+              <strong>Arjun completed JavaScript Assessment</strong>
+              <span>Score: 82% · 12 minutes ago</span>
+            </div>
+          </div>
+
+          <div className="trainer-activity">
+            <div className="activity-avatar">
+              P
+            </div>
+
+            <div>
+              <strong>Priya enrolled in Web Development</strong>
+              <span>8 trainees joined · 1 hour ago</span>
+            </div>
+          </div>
+
+          <div className="trainer-activity">
+            <div className="activity-avatar">
+              R
+            </div>
+
+            <div>
+              <strong>Rahul submitted an assessment</strong>
+              <span>Pending review · 2 hours ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TrainerStat({ label, value, detail }) {
+  return (
+    <div className="trainer-stat">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </div>
+  );
+}
+
+/* =========================================================
+   COURSES
+   ========================================================= */
+
+function TrainerCourses() {
+  const courses = [
+    {
+      code: "WD",
+      title: "Web Development Fundamentals",
+      category: "Web Development",
+      trainees: 42,
+      completion: "76%",
+      status: "Published",
+    },
+    {
+      code: "JS",
+      title: "JavaScript Essentials",
+      category: "Programming",
+      trainees: 31,
+      completion: "64%",
+      status: "Published",
+    },
+    {
+      code: "UI",
+      title: "UI/UX Design Basics",
+      category: "Design",
+      trainees: 28,
+      completion: "88%",
+      status: "Published",
+    },
+    {
+      code: "RE",
+      title: "React Development",
+      category: "Web Development",
+      trainees: 25,
+      completion: "52%",
+      status: "Draft",
+    },
+  ];
+
+  return (
+    <div className="trainer-content">
+      <div className="trainer-section-intro">
+        <div>
+          <h2>Manage your courses</h2>
+          <p>
+            Create, organize and monitor your learning
+            content.
+          </p>
+        </div>
+
+        <button className="trainer-primary-action">
+          + Create Course
+        </button>
+      </div>
+
+      <div className="trainer-course-grid">
+        {courses.map((course) => (
+          <div
+            className="trainer-course-card"
+            key={course.title}
+          >
+            <div
+              className={`trainer-course-cover ${
+                course.code === "JS"
+                  ? "orange"
+                  : course.code === "UI"
+                  ? "green"
+                  : ""
+              }`}
+            >
+              <span>{course.code}</span>
+              <small>{course.status}</small>
+            </div>
+
+            <div className="trainer-course-body">
+              <span className="trainer-course-category">
+                {course.category}
+              </span>
+
+              <h3>{course.title}</h3>
+
+              <div className="trainer-course-meta">
+                <span>{course.trainees} trainees</span>
+                <span>{course.completion} complete</span>
+              </div>
+
+              <div className="trainer-course-progress">
+                <div
+                  style={{
+                    width: course.completion,
+                  }}
+                ></div>
+              </div>
+
+              <div className="trainer-course-actions">
+                <button>Manage</button>
+                <button>View</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   TRAINEES
+   ========================================================= */
+
+function TrainerTrainees() {
+  const trainees = [
+    {
+      name: "Arjun Patel",
+      role: "Trainee",
+      skill: "Web Development",
+      level: "6/7",
+      progress: "82%",
+      course: "Web Development Fundamentals",
+    },
+    {
+      name: "Priya Shah",
+      role: "Trainee",
+      skill: "JavaScript",
+      level: "5/7",
+      progress: "74%",
+      course: "JavaScript Essentials",
+    },
+    {
+      name: "Rahul Mehta",
+      role: "Trainee",
+      skill: "UI/UX",
+      level: "4/7",
+      progress: "61%",
+      course: "UI/UX Design Basics",
+    },
+    {
+      name: "Neha Patel",
+      role: "Trainee",
+      skill: "React",
+      level: "3/7",
+      progress: "48%",
+      course: "React Development",
+    },
+  ];
+
+  return (
+    <div className="trainer-content">
+      <div className="trainer-section-intro">
+        <div>
+          <h2>Trainee Profiles</h2>
+          <p>
+            View trainee skills, progress, assessments and
+            learning activity.
+          </p>
+        </div>
+      </div>
+
+      <div className="trainer-table-panel">
+        <div className="trainer-table-header">
+          <span>Name</span>
+          <span>Primary Skill</span>
+          <span>Competency</span>
+          <span>Course Progress</span>
+          <span>Action</span>
+        </div>
+
+        {trainees.map((trainee) => (
+          <div
+            className="trainer-table-row"
+            key={trainee.name}
+          >
+            <div className="trainer-name-cell">
+              <div className="table-avatar">
+                {trainee.name.charAt(0)}
+              </div>
+
+              <div>
+                <strong>{trainee.name}</strong>
+                <span>{trainee.course}</span>
+              </div>
+            </div>
+
+            <span>{trainee.skill}</span>
+
+            <strong className="competency-badge">
+              {trainee.level}
+            </strong>
+
+            <div className="progress-cell">
+              <div className="small-progress">
+                <div
+                  style={{
+                    width: trainee.progress,
+                  }}
+                ></div>
+              </div>
+
+              <span>{trainee.progress}</span>
+            </div>
+
+            <button className="view-profile-button">
+              View Profile
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   OTHER LMS SECTIONS
+   ========================================================= */
+
+function TrainerAssessments() {
+  return (
+    <TrainerPlaceholder
+      title="Assessment Management"
+      description="Create questionnaires, review trainee submissions and monitor assessment performance."
+      cards={[
+        ["Pending Reviews", "06"],
+        ["Active Assessments", "12"],
+        ["Completed", "184"],
+      ]}
+    />
+  );
+}
+
+function TrainerResources() {
+  return (
+    <TrainerPlaceholder
+      title="Learning Resources"
+      description="Manage presentations, recorded lectures, study material and course resources."
+      cards={[
+        ["Uploaded Resources", "38"],
+        ["Videos", "14"],
+        ["Study Materials", "24"],
+      ]}
+    />
+  );
+}
+
+function TrainerAnalytics() {
+  return (
+    <TrainerPlaceholder
+      title="Training Analytics"
+      description="Monitor course completion, trainee performance and competency development."
+      cards={[
+        ["Avg. Completion", "78%"],
+        ["Avg. Score", "81%"],
+        ["Active Learners", "126"],
+      ]}
+    />
+  );
+}
+
+function TrainerFeedback() {
+  return (
+    <TrainerPlaceholder
+      title="Trainee Feedback"
+      description="Review feedback submitted by trainees about courses and learning experiences."
+      cards={[
+        ["Responses", "94"],
+        ["Avg. Rating", "4.6/5"],
+        ["Pending", "08"],
+      ]}
+    />
+  );
+}
+
+function TrainerSettings({ user }) {
+  return (
+    <div className="trainer-content">
+      <div className="trainer-section-intro">
+        <div>
+          <h2>Trainer Settings</h2>
+          <p>
+            Manage your trainer workspace preferences.
+          </p>
+        </div>
+      </div>
+
+      <div className="trainer-settings-panel">
+        <div>
+          <span>Trainer Name</span>
+          <strong>{user?.fullName || "Trainer"}</strong>
+        </div>
+
+        <div>
+          <span>Email</span>
+          <strong>{user?.email}</strong>
+        </div>
+
+        <div>
+          <span>Role</span>
+          <strong>Trainer</strong>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TrainerPlaceholder({
+  title,
+  description,
+  cards,
+}) {
+  return (
+    <div className="trainer-content">
+      <div className="trainer-section-intro">
+        <div>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+      </div>
+
+      <div className="trainer-stat-grid">
+        {cards.map(([label, value]) => (
+          <TrainerStat
+            key={label}
+            label={label}
+            value={value}
+            detail="Task 2 frontend prototype"
+          />
+        ))}
+      </div>
+
+      <div className="trainer-empty-panel">
+        <div className="trainer-empty-icon">
+          <Sparkles size={24} />
+        </div>
+
+        <h3>Workspace ready</h3>
+
+        <p>
+          This section is prepared for the next frontend
+          implementation stage. Backend, database and AI
+          integrations are intentionally excluded from Task 2.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   LANDING PAGE COMPONENTS
+   ========================================================= */
+
+function ProcessCard({
+  number,
+  icon,
+  title,
+  text,
+}) {
   return (
     <div className="process-card">
       <div className="process-top">
@@ -430,7 +1220,11 @@ function ProcessCard({ number, icon, title, text }) {
   );
 }
 
-function FeatureCard({ icon, title, text }) {
+function FeatureCard({
+  icon,
+  title,
+  text,
+}) {
   return (
     <div className="feature-card">
       <div className="feature-icon">
@@ -449,7 +1243,12 @@ function FeatureCard({ icon, title, text }) {
   );
 }
 
-function RoleCard({ icon, title, text, onClick }) {
+function RoleCard({
+  icon,
+  title,
+  text,
+  onClick,
+}) {
   return (
     <button
       className="role-card"
