@@ -61,7 +61,21 @@ pool
 // ==========================================
 
 const otpStore = new Map();
+// ==========================================
+// TRAINER OTP STORE
+// ==========================================
 
+const trainerOtpStore = new Map();
+
+
+// ==========================================
+// ADMIN AUTH SESSION STORE
+// ==========================================
+
+// Temporary in-memory admin sessions.
+// Later this can be replaced with JWT/session storage.
+
+const adminSessionStore = new Map();
 // ==========================================
 // HEALTH CHECK
 // ==========================================
