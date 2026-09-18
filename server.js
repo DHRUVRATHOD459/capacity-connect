@@ -890,6 +890,666 @@ app.post("/api/login", async (req, res) => {
 });
 
 // ==========================================
+// TRAINER LOGIN - PASSWORD CHECK
+// ==========================================
+//
+// Trainer account is created by Admin.
+// Trainer logs in using email + password.
+// If credentials are correct, OTP is sent
+// to the trainer's registered email.
+// ==========================================
+
+app.post("/api/trainer-login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required.",
+      });
+    }
+
+    const emailKey = email.trim().toLowerCase();
+
+    // --------------------------------------
+    // GET TRAINER
+    // --------------------------------------
+
+    const userResult = await pool.query(
+      `
+      SELECT
+        id,
+        full_name,
+        email,
+        phone,
+        password_hash,
+        role,
+        email_verified,
+        is_active,
+        created_at
+      FROM users
+      WHERE email = $1
+        AND role = 'trainer'
+      LIMIT 1
+      `,
+      [emailKey]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid trainer email or password.",
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // --------------------------------------
+    // CHECK ACTIVE ACCOUNT
+    // --------------------------------------
+
+    if (!user.is_active) {
+      return res.status(403).json({
+        success: false,
+        message: "Your trainer account is currently inactive.",
+      });
+    }
+
+    // --------------------------------------
+    // CHECK EMAIL VERIFICATION
+    // --------------------------------------
+
+    if (!user.email_verified) {
+      return res.status(403).json({
+        success: false,
+        message: "Trainer email is not verified.",
+      });
+    }
+
+    // --------------------------------------
+    // CHECK PASSWORD
+    // --------------------------------------
+
+    const passwordMatches = await bcrypt.compare(
+      password,
+      user.password_hash
+    );
+
+    if (!passwordMatches) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid trainer email or password.",
+      });
+    }
+
+    // --------------------------------------
+    // GENERATE OTP
+    // --------------------------------------
+
+    const otp = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
+    trainerOtpStore.set(emailKey, {
+      otp,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
+
+    console.log(
+      `Trainer OTP generated for ${emailKey}: ${otp}`
+    );
+
+    // --------------------------------------
+    // CHECK BREVO
+    // --------------------------------------
+
+    if (!BREVO_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        message: "Brevo API key is not configured.",
+      });
+    }
+
+    // --------------------------------------
+    // SEND OTP THROUGH BREVO
+    // --------------------------------------
+
+    const response = await fetch(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "api-key": BREVO_API_KEY,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          sender: {
+            name: "Capacity Connect",
+            email: SENDER_EMAIL,
+          },
+          to: [
+            {
+              email: emailKey,
+            },
+          ],
+          subject: "Capacity Connect Trainer Login OTP",
+          htmlContent: `
+            <div style="
+              font-family: Arial, sans-serif;
+              max-width: 500px;
+              margin: 40px auto;
+              padding: 30px;
+              border: 1px solid #e5ebe8;
+              border-radius: 18px;
+              background: #ffffff;
+            ">
+
+              <h2 style="
+                color: #07885f;
+                margin-bottom: 10px;
+              ">
+                Capacity Connect
+              </h2>
+
+              <p style="
+                color: #555;
+                font-size: 15px;
+              ">
+                Your Trainer login verification OTP is:
+              </p>
+
+              <div style="
+                font-size: 32px;
+                font-weight: bold;
+                letter-spacing: 8px;
+                padding: 18px;
+                margin: 25px 0;
+                background: #eaf8f3;
+                color: #07885f;
+                text-align: center;
+                border-radius: 12px;
+              ">
+                ${otp}
+              </div>
+
+              <p style="
+                color: #555;
+                font-size: 14px;
+              ">
+                This OTP is valid for
+                <strong>5 minutes</strong>.
+              </p>
+
+              <p style="
+                color: #888;
+                font-size: 13px;
+                margin-top: 25px;
+              ">
+                Please do not share this OTP with anyone.
+              </p>
+
+              <hr style="
+                border: none;
+                border-top: 1px solid #eeeeee;
+                margin: 25px 0;
+              " />
+
+              <p style="
+                color: #999;
+                font-size: 12px;
+              ">
+                This is an automated email from Capacity Connect.
+              </p>
+
+            </div>
+          `,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    // --------------------------------------
+    // BREVO ERROR
+    // --------------------------------------
+
+    if (!response.ok) {
+      console.error("Trainer Brevo error:", data);
+
+      trainerOtpStore.delete(emailKey);
+
+      return res.status(500).json({
+        success: false,
+        message:
+          data?.message || "Failed to send trainer OTP.",
+      });
+    }
+
+    console.log(
+      `Trainer OTP email sent successfully to ${emailKey}`
+    );
+
+    return res.json({
+      success: true,
+      message: "Trainer OTP sent successfully.",
+    });
+
+  } catch (error) {
+    console.error(
+      "Trainer login error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Something went wrong during trainer login.",
+    });
+  }
+});
+
+
+// ==========================================
+// TRAINER OTP VERIFICATION
+// ==========================================
+//
+// OTP correct
+//      ↓
+// Get trainer profile
+//      ↓
+// Return safe trainer data
+//      ↓
+// Frontend opens TrainerDashboard
+// ==========================================
+
+app.post("/api/trainer-verify-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required.",
+      });
+    }
+
+    const emailKey = email.trim().toLowerCase();
+
+    // --------------------------------------
+    // GET STORED OTP
+    // --------------------------------------
+
+    const storedData = trainerOtpStore.get(emailKey);
+
+    if (!storedData) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "OTP not found. Please login again.",
+      });
+    }
+
+    // --------------------------------------
+    // CHECK EXPIRY
+    // --------------------------------------
+
+    if (Date.now() > storedData.expiresAt) {
+      trainerOtpStore.delete(emailKey);
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "OTP expired. Please login again.",
+      });
+    }
+
+    // --------------------------------------
+    // CHECK OTP
+    // --------------------------------------
+
+    if (storedData.otp !== otp.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "Incorrect OTP.",
+      });
+    }
+
+    // --------------------------------------
+    // GET TRAINER + PROFILE
+    // --------------------------------------
+
+    const trainerResult = await pool.query(
+      `
+      SELECT
+        u.id,
+        u.full_name,
+        u.email,
+        u.phone,
+        u.role,
+        u.email_verified,
+        u.is_active,
+        u.created_at,
+
+        tp.qualification,
+        tp.experience,
+        tp.specialization,
+        tp.bio,
+        tp.organization,
+        tp.designation
+
+      FROM users u
+
+      LEFT JOIN trainer_profiles tp
+        ON tp.user_id = u.id
+
+      WHERE u.email = $1
+        AND u.role = 'trainer'
+
+      LIMIT 1
+      `,
+      [emailKey]
+    );
+
+    if (trainerResult.rows.length === 0) {
+      trainerOtpStore.delete(emailKey);
+
+      return res.status(404).json({
+        success: false,
+        message: "Trainer account not found.",
+      });
+    }
+
+    const trainer = trainerResult.rows[0];
+
+    // --------------------------------------
+    // REMOVE USED OTP
+    // --------------------------------------
+
+    trainerOtpStore.delete(emailKey);
+
+    // --------------------------------------
+    // SAFE TRAINER RESPONSE
+    // --------------------------------------
+
+    return res.json({
+      success: true,
+      message: "Trainer login successful.",
+
+      user: {
+        id: trainer.id,
+        fullName: trainer.full_name,
+        email: trainer.email,
+        phone: trainer.phone,
+        role: trainer.role,
+        emailVerified: trainer.email_verified,
+        isActive: trainer.is_active,
+        createdAt: trainer.created_at,
+
+        qualification:
+          trainer.qualification || "",
+
+        experience:
+          trainer.experience || "",
+
+        specialization:
+          trainer.specialization || "",
+
+        bio:
+          trainer.bio || "",
+
+        organization:
+          trainer.organization || "",
+
+        designation:
+          trainer.designation || "",
+      },
+    });
+
+  } catch (error) {
+    console.error(
+      "Trainer OTP verification error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Something went wrong while verifying trainer OTP.",
+    });
+  }
+});
+// ==========================================
+// ADMIN - CREATE TRAINER
+// ==========================================
+//
+// Admin creates the trainer account.
+// Trainer does NOT self-signup.
+//
+// Creates:
+// 1. users row
+// 2. trainer_profiles row
+//
+// Password is hashed before storing.
+// ==========================================
+
+app.post("/api/admin/create-trainer", async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const {
+      fullName,
+      email,
+      phone,
+      password,
+      qualification,
+      experience,
+      specialization,
+      bio,
+      organization,
+      designation,
+    } = req.body;
+
+    // --------------------------------------
+    // BASIC VALIDATION
+    // --------------------------------------
+
+    if (!fullName || !fullName.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Full name is required.",
+      });
+    }
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required.",
+      });
+    }
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: "Password is required.",
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must contain at least 6 characters.",
+      });
+    }
+
+    const emailKey = email.trim().toLowerCase();
+
+    // --------------------------------------
+    // CHECK EXISTING USER
+    // --------------------------------------
+
+    const existingUser = await client.query(
+      `
+      SELECT id
+      FROM users
+      WHERE email = $1
+      LIMIT 1
+      `,
+      [emailKey]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "An account with this email already exists.",
+      });
+    }
+
+    // --------------------------------------
+    // HASH PASSWORD
+    // --------------------------------------
+
+    const passwordHash = await bcrypt.hash(
+      password,
+      12
+    );
+
+    // --------------------------------------
+    // START TRANSACTION
+    // --------------------------------------
+
+    await client.query("BEGIN");
+
+    // --------------------------------------
+    // CREATE TRAINER USER
+    // --------------------------------------
+
+    const userResult = await client.query(
+      `
+      INSERT INTO users
+      (
+        full_name,
+        email,
+        phone,
+        password_hash,
+        role,
+        email_verified,
+        is_active
+      )
+      VALUES
+      (
+        $1,
+        $2,
+        $3,
+        $4,
+        'trainer',
+        TRUE,
+        TRUE
+      )
+      RETURNING
+        id,
+        full_name,
+        email,
+        phone,
+        role,
+        email_verified,
+        is_active,
+        created_at
+      `,
+      [
+        fullName.trim(),
+        emailKey,
+        phone?.trim() || null,
+        passwordHash,
+      ]
+    );
+
+    const user = userResult.rows[0];
+
+    // --------------------------------------
+    // CREATE TRAINER PROFILE
+    // --------------------------------------
+
+    await client.query(
+      `
+      INSERT INTO trainer_profiles
+      (
+        user_id,
+        qualification,
+        experience,
+        specialization,
+        bio,
+        organization,
+        designation
+      )
+      VALUES
+      (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7
+      )
+      `,
+      [
+        user.id,
+        qualification?.trim() || null,
+        experience?.trim() || null,
+        specialization?.trim() || null,
+        bio?.trim() || null,
+        organization?.trim() || null,
+        designation?.trim() || null,
+      ]
+    );
+
+    // --------------------------------------
+    // COMMIT
+    // --------------------------------------
+
+    await client.query("COMMIT");
+
+    console.log(
+      `Trainer account created: ${emailKey}`
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Trainer account created successfully.",
+      trainer: {
+        id: user.id,
+        fullName: user.full_name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        emailVerified: user.email_verified,
+        isActive: user.is_active,
+        createdAt: user.created_at,
+      },
+    });
+
+  } catch (error) {
+
+    await client.query("ROLLBACK");
+
+    console.error(
+      "Create trainer error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Unable to create trainer account.",
+    });
+
+  } finally {
+    client.release();
+  }
+});
+// ==========================================
 // START SERVER
 // ==========================================
 
