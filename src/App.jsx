@@ -2,6 +2,7 @@ import { useState } from "react";
 import AppDashboard from "./AppDashboard";
 import TraineeAuth from "./TraineeAuth";
 import TrainerAuth from "./TrainerAuth";
+import AdminAuth from "./AdminAuth";
 
 import {
   ArrowRight,
@@ -20,6 +21,7 @@ function App() {
   const [showRoles, setShowRoles] = useState(false);
   const [showTraineeAuth, setShowTraineeAuth] = useState(false);
   const [showTrainerAuth, setShowTrainerAuth] = useState(false);
+  const [showAdminAuth, setShowAdminAuth] = useState(false);
 
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -40,8 +42,10 @@ function App() {
     );
 
     setCurrentUser(user);
+
     setShowTraineeAuth(false);
     setShowTrainerAuth(false);
+    setShowAdminAuth(false);
     setShowRoles(false);
   };
 
@@ -49,8 +53,10 @@ function App() {
     localStorage.removeItem("capacityConnectCurrentUser");
 
     setCurrentUser(null);
+
     setShowTraineeAuth(false);
     setShowTrainerAuth(false);
+    setShowAdminAuth(false);
     setShowRoles(false);
   };
 
@@ -79,6 +85,18 @@ function App() {
   }
 
   // =========================
+  // ADMIN DASHBOARD
+  // =========================
+  if (currentUser?.role === "admin") {
+    return (
+      <AdminDashboard
+        user={currentUser}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  // =========================
   // TRAINEE LOGIN / SIGNUP
   // =========================
   if (showTraineeAuth) {
@@ -98,6 +116,18 @@ function App() {
       <TrainerAuth
         onLoginSuccess={handleLoginSuccess}
         onBackToLanding={() => setShowTrainerAuth(false)}
+      />
+    );
+  }
+
+  // =========================
+  // ADMIN LOGIN
+  // =========================
+  if (showAdminAuth) {
+    return (
+      <AdminAuth
+        onLoginSuccess={handleLoginSuccess}
+        onBackToLanding={() => setShowAdminAuth(false)}
       />
     );
   }
@@ -442,7 +472,6 @@ function App() {
             </p>
 
             <div className="role-options">
-              {/* TRAINEE */}
               <RoleCard
                 icon={<GraduationCap size={25} />}
                 title="Trainee"
@@ -453,7 +482,6 @@ function App() {
                 }}
               />
 
-              {/* TRAINER */}
               <RoleCard
                 icon={<Users size={25} />}
                 title="Trainer"
@@ -464,11 +492,14 @@ function App() {
                 }}
               />
 
-              {/* ADMIN - NOT CONNECTED YET */}
               <RoleCard
                 icon={<ShieldCheck size={25} />}
                 title="Organization Admin"
                 text="Manage users, learning and organizational analytics."
+                onClick={() => {
+                  setShowRoles(false);
+                  setShowAdminAuth(true);
+                }}
               />
             </div>
 
@@ -484,8 +515,130 @@ function App() {
 }
 
 /* =========================================================
+   ADMIN DASHBOARD
+   ========================================================= */
+
+function AdminDashboard({ user, onLogout }) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        padding: "40px",
+        background: "#f7f9fc",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "1100px",
+          margin: "0 auto",
+          background: "#ffffff",
+          borderRadius: "24px",
+          padding: "40px",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.08)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "20px",
+          }}
+        >
+          <div>
+            <span
+              style={{
+                fontSize: "12px",
+                fontWeight: "700",
+                letterSpacing: "1.5px",
+                color: "#64748b",
+              }}
+            >
+              ORGANIZATION ADMIN
+            </span>
+
+            <h1
+              style={{
+                margin: "8px 0 6px",
+                fontSize: "32px",
+              }}
+            >
+              Admin Dashboard
+            </h1>
+
+            <p
+              style={{
+                margin: 0,
+                color: "#64748b",
+              }}
+            >
+              Welcome, {user?.fullName || "Administrator"}.
+            </p>
+          </div>
+
+          <button
+            onClick={onLogout}
+            style={{
+              border: "none",
+              padding: "12px 18px",
+              borderRadius: "10px",
+              cursor: "pointer",
+              fontWeight: "700",
+              background: "#eef2f7",
+            }}
+          >
+            Logout
+          </button>
+        </div>
+
+        <div
+          style={{
+            marginTop: "35px",
+            padding: "24px",
+            borderRadius: "16px",
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              marginBottom: "10px",
+            }}
+          >
+            <ShieldCheck size={24} />
+
+            <h2
+              style={{
+                margin: 0,
+                fontSize: "20px",
+              }}
+            >
+              Admin access verified
+            </h2>
+          </div>
+
+          <p
+            style={{
+              margin: 0,
+              color: "#64748b",
+              lineHeight: 1.6,
+            }}
+          >
+            The admin authentication flow is connected.
+            The full trainer and trainee management dashboard
+            will be implemented in the next stage.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
    TRAINER DASHBOARD
-   Frontend-only Task 2 prototype
    ========================================================= */
 
 function TrainerDashboard({ user, onLogout }) {
@@ -1139,12 +1292,47 @@ function TrainerSettings({ user }) {
 
         <div>
           <span>Email</span>
-          <strong>{user?.email}</strong>
+          <strong>{user?.email || "Not added"}</strong>
         </div>
 
         <div>
           <span>Role</span>
           <strong>Trainer</strong>
+        </div>
+
+        <div>
+          <span>Qualification</span>
+          <strong>
+            {user?.qualification || "Not added"}
+          </strong>
+        </div>
+
+        <div>
+          <span>Experience</span>
+          <strong>
+            {user?.experience || "Not added"}
+          </strong>
+        </div>
+
+        <div>
+          <span>Specialization</span>
+          <strong>
+            {user?.specialization || "Not added"}
+          </strong>
+        </div>
+
+        <div>
+          <span>Organization</span>
+          <strong>
+            {user?.organization || "Not added"}
+          </strong>
+        </div>
+
+        <div>
+          <span>Designation</span>
+          <strong>
+            {user?.designation || "Not added"}
+          </strong>
         </div>
       </div>
     </div>

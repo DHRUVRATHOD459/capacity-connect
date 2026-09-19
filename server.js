@@ -61,6 +61,7 @@ pool
 // ==========================================
 
 const otpStore = new Map();
+const adminSessionStore = new Map();
 // ==========================================
 // TRAINER OTP STORE
 // ==========================================
@@ -75,7 +76,7 @@ const trainerOtpStore = new Map();
 // Temporary in-memory admin sessions.
 // Later this can be replaced with JWT/session storage.
 
-const adminSessionStore = new Map();
+
 // ==========================================
 // HEALTH CHECK
 // ==========================================
@@ -913,6 +914,83 @@ app.post("/api/login", async (req, res) => {
 // to the trainer's registered email.
 // ==========================================
 
+app.post("/api/admin-login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required.",
+      });
+    }
+
+    const result = await pool.query(
+      `SELECT id, full_name, email, password_hash, role, email_verified, is_active
+       FROM users
+       WHERE email = $1 AND role = 'admin'
+       LIMIT 1`,
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid admin credentials.",
+      });
+    }
+
+    const admin = result.rows[0];
+
+    if (!admin.is_active) {
+      return res.status(403).json({
+        success: false,
+        message: "Admin account is inactive.",
+      });
+    }
+
+    const passwordMatch = await bcrypt.compare(
+      password,
+      admin.password_hash
+    );
+
+    if (!passwordMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid admin credentials.",
+      });
+    }
+
+    const sessionToken = crypto.randomUUID();
+
+    adminSessionStore.set(sessionToken, {
+      adminId: admin.id,
+      email: admin.email,
+      expiresAt: Date.now() + 8 * 60 * 60 * 1000,
+    });
+
+    return res.json({
+      success: true,
+      message: "Admin login successful.",
+      token: sessionToken,
+      user: {
+        id: admin.id,
+        fullName: admin.full_name,
+        email: admin.email,
+        role: admin.role,
+        emailVerified: admin.email_verified,
+        isActive: admin.is_active,
+      },
+    });
+  } catch (error) {
+    console.error("Admin login error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error during admin login.",
+    });
+  }
+});
 app.post("/api/trainer-login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -1561,6 +1639,142 @@ app.post("/api/admin/create-trainer", async (req, res) => {
 
   } finally {
     client.release();
+  }
+});
+// ==========================================
+// TRAINER - GET ALL TRAINEES
+// ==========================================
+//
+// Trainer can see trainees only.
+// Data comes directly from PostgreSQL / Neon.
+// ==========================================
+
+app.get("/api/trainer/trainees", async (req, res) => {
+  try {
+    // --------------------------------------
+    // GET ALL TRAINEES
+    // --------------------------------------
+
+    const traineesResult = await pool.query(`
+      SELECT
+        u.id,
+        u.full_name,
+        u.email,
+        u.phone,
+        u.role,
+        u.email_verified,
+        u.is_active,
+        u.created_at,
+
+        tp.education,
+        tp.course,
+        tp.institution,
+        tp.academic_year,
+        tp.qualification,
+        tp.experience,
+        tp.interests
+
+      FROM users u
+
+      LEFT JOIN trainee_profiles tp
+        ON tp.user_id = u.id
+
+      WHERE u.role = 'trainee'
+
+      ORDER BY u.created_at DESC
+    `);
+
+    // --------------------------------------
+    // GET SKILLS FOR ALL TRAINEES
+    // --------------------------------------
+
+    const skillsResult = await pool.query(`
+      SELECT
+        us.user_id,
+        s.name,
+        us.level,
+        us.is_verified,
+        us.assessment_status,
+        us.assessment_score,
+        us.verified_at
+
+      FROM user_skills us
+
+      INNER JOIN skills s
+        ON s.id = us.skill_id
+
+      INNER JOIN users u
+        ON u.id = us.user_id
+
+      WHERE u.role = 'trainee'
+
+      ORDER BY s.name ASC
+    `);
+
+    // --------------------------------------
+    // GROUP SKILLS BY TRAINEE
+    // --------------------------------------
+
+    const skillsByUser = {};
+
+    for (const skill of skillsResult.rows) {
+      if (!skillsByUser[skill.user_id]) {
+        skillsByUser[skill.user_id] = [];
+      }
+
+      skillsByUser[skill.user_id].push({
+        name: skill.name,
+        level: skill.level,
+        isVerified: skill.is_verified,
+        assessmentStatus: skill.assessment_status,
+        assessmentScore: skill.assessment_score,
+        verifiedAt: skill.verified_at,
+      });
+    }
+
+    // --------------------------------------
+    // BUILD FINAL TRAINEE RESPONSE
+    // --------------------------------------
+
+    const trainees = traineesResult.rows.map((trainee) => ({
+      id: trainee.id,
+      fullName: trainee.full_name,
+      email: trainee.email,
+      phone: trainee.phone,
+      role: trainee.role,
+      emailVerified: trainee.email_verified,
+      isActive: trainee.is_active,
+      createdAt: trainee.created_at,
+
+      education: trainee.education || "",
+      course: trainee.course || "",
+      institution: trainee.institution || "",
+      year: trainee.academic_year || "",
+      qualification: trainee.qualification || "",
+      experience: trainee.experience || "",
+      interests: trainee.interests || "",
+
+      skills: skillsByUser[trainee.id] || [],
+    }));
+
+    // --------------------------------------
+    // SEND RESPONSE
+    // --------------------------------------
+
+    return res.json({
+      success: true,
+      message: "Trainees fetched successfully.",
+      count: trainees.length,
+      trainees,
+    });
+
+  } catch (error) {
+    console.error("Get trainees error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch trainees.",
+    });
   }
 });
 // ==========================================

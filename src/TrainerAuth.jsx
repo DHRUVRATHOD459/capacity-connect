@@ -122,6 +122,26 @@ function TrainerAuth({ onLoginSuccess, onBackToLanding }) {
         );
       }
 
+      // ==========================================
+      // REAL TRAINER DATA RECEIVED FROM BACKEND
+      // ==========================================
+      console.log("=================================");
+      console.log("CAPACITY CONNECT - TRAINER DATA");
+      console.log("=================================");
+      console.log("Full API Response:", data);
+      console.log("Trainer User Object:", data.user);
+      console.log("Trainer Name:", data.user?.fullName);
+      console.log("Trainer Email:", data.user?.email);
+      console.log("Qualification:", data.user?.qualification);
+      console.log("Experience:", data.user?.experience);
+      console.log(
+        "Specialization:",
+        data.user?.specialization
+      );
+      console.log("Organization:", data.user?.organization);
+      console.log("Designation:", data.user?.designation);
+      console.log("=================================");
+
       const trainer = data.user;
 
       localStorage.setItem(
