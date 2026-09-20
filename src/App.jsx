@@ -27,6 +27,8 @@ import {
   ChevronRight,
   RefreshCw,
   X,
+  Eye,
+  Plus,
 } from "lucide-react";
 
 const API_BASE =
@@ -494,108 +496,388 @@ function App() {
 }
 
 /* =========================================================
-   ADMIN
+   ADMIN DASHBOARD (FIXED - Graphs, Reviews, Buttons)
    ========================================================= */
 
 function AdminDashboard({ user, onLogout }) {
+  const [activeSection, setActiveSection] = useState("dashboard");
+  const [showEvidenceModal, setShowEvidenceModal] = useState(false);
+  const [showAddTraineeModal, setShowAddTraineeModal] = useState(false);
+  const [showAddTrainerModal, setShowAddTrainerModal] = useState(false);
+  const [selectedReview, setSelectedReview] = useState(null);
+  const [trainees, setTrainees] = useState([]);
+  const [loadingTrainees, setLoadingTrainees] = useState(false);
+
+  // Mock Review Queue (Demo data)
+  const [reviewQueue, setReviewQueue] = useState([
+    { id: 1, userName: "Dhruv Rathod", role: "Trainee", skill: "JavaScript", proposedLevel: 5, aiCheatFlag: "None", status: "Pending" },
+    { id: 2, userName: "Arjun Mehta", role: "Trainer", skill: "React", proposedLevel: 0, aiCheatFlag: "Suspicious (Tab Switch)", status: "Pending" }
+  ]);
+
+  // Fetch Trainees from Backend
+  useEffect(() => {
+    const fetchTrainees = async () => {
+      try {
+        setLoadingTrainees(true);
+        const response = await fetch(`${API_BASE}/api/trainer/trainees`);
+        const data = await response.json();
+        if (response.ok && data.success) setTrainees(data.trainees || []);
+      } catch (error) {
+        console.error("Admin fetch error:", error);
+      } finally {
+        setLoadingTrainees(false);
+      }
+    };
+    fetchTrainees();
+  }, []);
+
+  const handleReviewClick = (review) => {
+    setSelectedReview(review);
+    setShowEvidenceModal(true);
+  };
+
+  const handleApprove = (review) => {
+    setReviewQueue(prev => prev.filter(r => r.id !== review.id));
+    setShowEvidenceModal(false);
+    alert(`✅ ${review.userName}'s ${review.skill} verified at ${review.proposedLevel}/7`);
+  };
+
+  const handleReject = (review) => {
+    setReviewQueue(prev => prev.filter(r => r.id !== review.id));
+    setShowEvidenceModal(false);
+    alert(`❌ ${review.userName}'s ${review.skill} rejected (0/7)`);
+  };
+
+  const totalSkills = trainees.reduce((total, t) => total + (t.skills?.length || 0), 0);
+  const verifiedSkills = trainees.reduce((total, t) => total + (t.skills || []).filter(s => s.isVerified).length, 0);
+  const avgLevel = totalSkills > 0 ? (trainees.reduce((sum, t) => sum + (t.skills || []).reduce((s, sk) => s + Number(sk.level || 0), 0), 0) / totalSkills).toFixed(1) : "0.0";
+
+  // Bar Chart Data Calculation (FIXED - relative heights)
+  const barData = [0, 1, 2, 3, 4, 5, 6, 7].map(level => {
+    const count = trainees.flatMap(t => t.skills || []).filter(s => Number(s.level) === level).length;
+    return { level, count };
+  });
+  const maxBarCount = Math.max(...barData.map(d => d.count), 1);
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        padding: "40px",
-        background: "#f7f9fc",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "1100px",
-          margin: "0 auto",
-          background: "#fff",
-          borderRadius: "24px",
-          padding: "40px",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.08)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+    <div style={{ display: "flex", minHeight: "100vh", background: "#0f172a" }}>
+      {/* SIDEBAR */}
+      <aside style={{ width: "260px", background: "#1e293b", borderRight: "1px solid #334155", padding: "24px", display: "flex", flexDirection: "column", flexShrink: "0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "32px", color: "#38bdf8" }}>
+          <ShieldCheck size={24} />
+          <span style={{ fontSize: "18px", fontWeight: "800", color: "#fff" }}>ADMIN<span style={{color: "#38bdf8"}}>PANEL</span></span>
+        </div>
+        <nav style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1 }}>
+          <AdminNavItem icon={<BarChart3 size={18} />} label="Overview & Analytics" active={activeSection === "dashboard"} onClick={() => setActiveSection("dashboard")} />
+          <AdminNavItem icon={<Users size={18} />} label="All Trainees" active={activeSection === "trainees"} onClick={() => setActiveSection("trainees")} />
+          <AdminNavItem icon={<GraduationCap size={18} />} label="All Trainers" active={activeSection === "trainers"} onClick={() => setActiveSection("trainers")} />
+          <AdminNavItem icon={<ClipboardCheck size={18} />} label={`Verification Reviews (${reviewQueue.length})`} active={activeSection === "reviews"} onClick={() => setActiveSection("reviews")} />
+        </nav>
+        <button onClick={onLogout} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px", borderRadius: "8px", border: "1px solid #475569", background: "transparent", color: "#f8fafc", fontWeight: "600", cursor: "pointer", marginTop: "16px" }}>
+          <ArrowRight size={18} style={{ transform: "rotate(180deg)" }} /> Logout
+        </button>
+      </aside>
+
+      {/* MAIN CONTENT */}
+      <main style={{ flex: 1, padding: "32px", background: "#f8fafc", overflowY: "auto" }}>
+        <header style={{ marginBottom: "32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <span
-              style={{
-                fontSize: "12px",
-                fontWeight: "700",
-                letterSpacing: "1.5px",
-                color: "#64748b",
-              }}
-            >
-              ORGANIZATION ADMIN
-            </span>
-
-            <h1 style={{ margin: "8px 0 6px" }}>
-              Admin Dashboard
+            <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: "1px", color: "#64748b" }}>ORGANIZATION ADMIN</span>
+            <h1 style={{ margin: "8px 0 0", fontSize: "28px", color: "#0f172a" }}>
+              {activeSection === "dashboard" ? "Portal Overview" :
+               activeSection === "trainees" ? "All Trainees" :
+               activeSection === "trainers" ? "All Trainers" :
+               activeSection === "reviews" ? "Pending Verification Reviews" : "Portal Overview"}
             </h1>
-
-            <p style={{ color: "#64748b" }}>
-              Welcome, {user?.fullName || "Administrator"}.
-            </p>
           </div>
-
-          <button
-            onClick={onLogout}
-            style={{
-              border: "none",
-              padding: "12px 18px",
-              borderRadius: "10px",
-              cursor: "pointer",
-              fontWeight: "700",
-              background: "#eef2f7",
-            }}
-          >
-            Logout
-          </button>
-        </div>
-
-        <div
-          style={{
-            marginTop: "35px",
-            padding: "24px",
-            borderRadius: "16px",
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              marginBottom: "10px",
-            }}
-          >
-            <ShieldCheck size={24} />
-
-            <h2 style={{ margin: 0 }}>
-              Admin access verified
-            </h2>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#07885f", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" }}>A</div>
+            <div>
+              <div style={{ fontWeight: "700", fontSize: "14px", color: "#0f172a" }}>{user?.fullName || "Admin"}</div>
+              <div style={{ fontSize: "12px", color: "#64748b" }}>{user?.email}</div>
+            </div>
           </div>
+        </header>
 
-          <p
-            style={{
-              margin: 0,
-              color: "#64748b",
-              lineHeight: 1.6,
-            }}
-          >
-            The admin authentication flow is connected.
-            Trainer and trainee management can be expanded from
-            this workspace.
-          </p>
-        </div>
-      </div>
+        {/* DASHBOARD / ANALYTICS */}
+        {activeSection === "dashboard" && (
+          <>
+            {/* Stats Cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "20px", marginBottom: "32px" }}>
+              <StatCard label="Total Trainees" value={loadingTrainees ? "..." : String(trainees.length)} detail="Live Database" color="#07885f" />
+              <StatCard label="Total Trainers" value="0" detail="No trainers yet" color="#2563eb" />
+              <StatCard label="Pending Reviews" value={String(reviewQueue.length)} detail="Action Required" color="#dc2626" />
+              <StatCard label="Avg. Competency" value={`${avgLevel}/7`} detail="Across all skills" color="#ea580c" />
+            </div>
+
+            {/* Charts */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+              {/* Bar Chart - Skill Level Distribution (FIXED) */}
+              <div style={{ background: "#fff", borderRadius: "16px", border: "1px solid #e2e8f0", padding: "24px" }}>
+                <h3 style={{ marginTop: 0, fontSize: "16px", color: "#0f172a", marginBottom: "20px" }}>Skill Level Distribution</h3>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: "12px", height: "220px", padding: "20px 0", borderBottom: "2px solid #e2e8f0" }}>
+                  {barData.map(({ level, count }) => {
+                    const barHeight = (count / maxBarCount) * 160;
+                    const barColor = level <= 3 ? "#fecaca" : level <= 5 ? "#fed7aa" : "#bbf7d0";
+                    return (
+                      <div key={level} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a" }}>{count}</span>
+                        <div style={{ width: "100%", background: barColor, borderRadius: "6px 6px 0 0", height: `${Math.max(8, barHeight)}px`, transition: "height 0.5s", minHeight: "8px" }}></div>
+                        <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>L{level}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ marginTop: "16px", padding: "12px", background: "#f8fafc", borderRadius: "8px", fontSize: "12px", color: "#64748b" }}>
+                  <strong>Legend:</strong>
+                  <span style={{ marginLeft: "12px" }}><span style={{ display: "inline-block", width: "12px", height: "12px", background: "#fecaca", borderRadius: "2px", marginRight: "4px" }}></span>0-3 (Developing)</span>
+                  <span style={{ marginLeft: "12px" }}><span style={{ display: "inline-block", width: "12px", height: "12px", background: "#fed7aa", borderRadius: "2px", marginRight: "4px" }}></span>4-5 (Intermediate)</span>
+                  <span style={{ marginLeft: "12px" }}><span style={{ display: "inline-block", width: "12px", height: "12px", background: "#bbf7d0", borderRadius: "2px", marginRight: "4px" }}></span>6-7 (Expert)</span>
+                </div>
+              </div>
+
+              {/* Pie Chart - Verified vs Unverified (FIXED SVG) */}
+              <div style={{ background: "#fff", borderRadius: "16px", border: "1px solid #e2e8f0", padding: "24px" }}>
+                <h3 style={{ marginTop: 0, fontSize: "16px", color: "#0f172a", marginBottom: "20px" }}>Verified vs Unverified</h3>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "40px", minHeight: "220px" }}>
+                  <div style={{ position: "relative", width: "180px", height: "180px" }}>
+                    <svg width="180" height="180" viewBox="0 0 180 180">
+                      <circle cx="90" cy="90" r="70" fill="#e2e8f0" />
+                      {totalSkills > 0 && (
+                        <circle
+                          cx="90"
+                          cy="90"
+                          r="70"
+                          fill="none"
+                          stroke="#07885f"
+                          strokeWidth="40"
+                          strokeDasharray={`${(verifiedSkills/totalSkills) * 440} 440`}
+                          transform="rotate(-90 90 90)"
+                        />
+                      )}
+                      <circle cx="90" cy="90" r="50" fill="#fff" />
+                    </svg>
+                    <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center" }}>
+                      <div style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a" }}>{totalSkills > 0 ? Math.round((verifiedSkills/totalSkills)*100) : 0}%</div>
+                      <div style={{ fontSize: "11px", color: "#64748b" }}>Verified</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <div style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#07885f" }}></div>
+                      <span style={{ fontSize: "14px", color: "#0f172a" }}>Verified</span>
+                      <strong style={{ fontSize: "14px", color: "#07885f" }}>{verifiedSkills}</strong>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <div style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#e2e8f0" }}></div>
+                      <span style={{ fontSize: "14px", color: "#0f172a" }}>Unverified</span>
+                      <strong style={{ fontSize: "14px", color: "#64748b" }}>{totalSkills - verifiedSkills}</strong>
+                    </div>
+                    <div style={{ marginTop: "8px", padding: "8px 12px", background: "#f8fafc", borderRadius: "6px", fontSize: "12px", color: "#64748b" }}>
+                      Total: <strong>{totalSkills}</strong> skills
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ALL TRAINEES */}
+        {activeSection === "trainees" && (
+          <div style={{ background: "#fff", borderRadius: "16px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+            <div style={{ padding: "20px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: "16px" }}>All Trainees ({trainees.length})</h3>
+              <button onClick={() => setShowAddTraineeModal(true)} style={{ padding: "10px 20px", background: "#07885f", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+                <Plus size={16} /> Add Trainee
+              </button>
+            </div>
+            {loadingTrainees ? (
+              <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>Loading trainees...</div>
+            ) : (
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead style={{ background: "#f8fafc" }}>
+                  <tr style={{ borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
+                    <th style={{ padding: "14px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Name</th>
+                    <th style={{ padding: "14px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Email</th>
+                    <th style={{ padding: "14px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Course</th>
+                    <th style={{ padding: "14px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Skills</th>
+                    <th style={{ padding: "14px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Avg Level</th>
+                    <th style={{ padding: "14px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trainees.map(t => {
+                    const avg = t.skills?.length > 0 ? (t.skills.reduce((sum, s) => sum + Number(s.level), 0) / t.skills.length).toFixed(1) : "0.0";
+                    return (
+                      <tr key={t.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "16px 24px", fontWeight: "600" }}>{t.fullName}</td>
+                        <td style={{ padding: "16px 24px", color: "#64748b" }}>{t.email}</td>
+                        <td style={{ padding: "16px 24px", color: "#64748b" }}>{t.course || "N/A"}</td>
+                        <td style={{ padding: "16px 24px" }}>{t.skills?.map(s => s.name).join(", ") || "None"}</td>
+                        <td style={{ padding: "16px 24px", fontWeight: "700", color: "#07885f" }}>{avg}/7</td>
+                        <td style={{ padding: "16px 24px" }}>
+                          <button onClick={() => alert(`Viewing profile of ${t.fullName}`)} style={{ padding: "6px 12px", background: "#07885f", color: "#fff", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer", marginRight: "8px" }}>View</button>
+                          <button onClick={() => alert(`Edit ${t.fullName}`)} style={{ padding: "6px 12px", background: "#2563eb", color: "#fff", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}>Edit</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {trainees.length === 0 && (
+                    <tr><td colSpan="6" style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>No trainees found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* ALL TRAINERS */}
+        {activeSection === "trainers" && (
+          <div style={{ background: "#fff", borderRadius: "16px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+            <div style={{ padding: "20px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: "16px" }}>All Trainers (0)</h3>
+              <button onClick={() => setShowAddTrainerModal(true)} style={{ padding: "10px 20px", background: "#2563eb", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+                <Plus size={16} /> Add Trainer
+              </button>
+            </div>
+            <div style={{ padding: "60px 20px", textAlign: "center", color: "#64748b" }}>
+              <GraduationCap size={48} color="#64748b" style={{ marginBottom: "16px" }} />
+              <h3 style={{ margin: "0 0 8px" }}>No trainers yet</h3>
+              <p style={{ margin: 0 }}>Click "Add Trainer" to create a new trainer account.</p>
+            </div>
+          </div>
+        )}
+
+        {/* VERIFICATION REVIEWS */}
+        {activeSection === "reviews" && (
+          <div style={{ background: "#fff", borderRadius: "16px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+            <div style={{ padding: "20px 24px", borderBottom: "1px solid #e2e8f0" }}>
+              <h3 style={{ margin: 0, fontSize: "16px" }}>Pending Verification Reviews ({reviewQueue.length})</h3>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead style={{ background: "#f8fafc" }}>
+                <tr style={{ borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
+                  <th style={{ padding: "16px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>User</th>
+                  <th style={{ padding: "16px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Role</th>
+                  <th style={{ padding: "16px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Skill</th>
+                  <th style={{ padding: "16px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>AI Proposed</th>
+                  <th style={{ padding: "16px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Cheat Flag</th>
+                  <th style={{ padding: "16px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reviewQueue.map(review => (
+                  <tr key={review.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <td style={{ padding: "16px 24px", fontWeight: "600" }}>{review.userName}</td>
+                    <td style={{ padding: "16px 24px" }}>
+                      <span style={{ padding: "4px 10px", borderRadius: "20px", background: review.role === "Trainer" ? "#dbeafe" : "#dcfce7", color: review.role === "Trainer" ? "#1d4ed8" : "#166534", fontSize: "11px", fontWeight: "700" }}>{review.role}</span>
+                    </td>
+                    <td style={{ padding: "16px 24px" }}>{review.skill}</td>
+                    <td style={{ padding: "16px 24px", fontWeight: "700", color: review.proposedLevel >= 4 ? "#07885f" : "#dc2626" }}>{review.proposedLevel}/7</td>
+                    <td style={{ padding: "16px 24px", color: review.aiCheatFlag === "None" ? "#07885f" : "#dc2626", fontWeight: "600", fontSize: "13px" }}>{review.aiCheatFlag}</td>
+                    <td style={{ padding: "16px 24px" }}>
+                      <button onClick={() => handleReviewClick(review)} style={{ padding: "8px 14px", background: "#07885f", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
+                        <Eye size={14} /> Review
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {reviewQueue.length === 0 && (
+                  <tr><td colSpan="6" style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>✅ No pending reviews</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* EVIDENCE MODAL */}
+        {showEvidenceModal && selectedReview && (
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setShowEvidenceModal(false)}>
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", width: "600px", maxHeight: "80vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+                <h2 style={{ margin: 0, fontSize: "20px" }}>Verification Evidence: {selectedReview.skill}</h2>
+                <button onClick={() => setShowEvidenceModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b" }}><X size={24} /></button>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
+                <div style={{ padding: "16px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "4px" }}>Camera Recording</div>
+                  <div style={{ fontWeight: "600", color: "#07885f", display: "flex", alignItems: "center", gap: "8px" }}><Video size={16} /> Demo File Available</div>
+                </div>
+                <div style={{ padding: "16px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "4px" }}>Microphone / Screen</div>
+                  <div style={{ fontWeight: "600", color: "#07885f", display: "flex", alignItems: "center", gap: "8px" }}><FileText size={16} /> Demo File Available</div>
+                </div>
+              </div>
+
+              <div style={{ padding: "16px", background: selectedReview.aiCheatFlag === "None" ? "#f0fdf4" : "#fef2f2", border: `1px solid ${selectedReview.aiCheatFlag === "None" ? "#bbf7d0" : "#fecaca"}`, borderRadius: "8px", marginBottom: "24px" }}>
+                <strong>AI Analysis Result:</strong>
+                <p style={{ margin: "8px 0 0", fontSize: "14px", color: "#334155" }}>
+                  {selectedReview.aiCheatFlag === "None"
+                    ? "No suspicious activity detected. Eye movement and tab focus remained normal throughout the 10-minute interview."
+                    : "Suspicious activity detected: Multiple tab switches and prolonged absence of face in camera frame during questioning."}
+                </p>
+              </div>
+
+              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+                <button onClick={() => handleReject(selectedReview)} style={{ padding: "10px 20px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", fontWeight: "600", cursor: "pointer" }}>Reject (0/7)</button>
+                <button onClick={() => handleApprove(selectedReview)} style={{ padding: "10px 20px", background: "#07885f", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "600", cursor: "pointer" }}>Approve & Set Level ({selectedReview.proposedLevel}/7)</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ADD TRAINEE MODAL */}
+        {showAddTraineeModal && (
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setShowAddTraineeModal(false)}>
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", width: "500px" }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+                <h2 style={{ margin: 0, fontSize: "20px" }}>Add New Trainee</h2>
+                <button onClick={() => setShowAddTraineeModal(false)} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={24} /></button>
+              </div>
+              <p style={{ color: "#64748b", marginBottom: "20px" }}>Trainee registration form will open here. For now, trainees can self-register through the landing page.</p>
+              <button onClick={() => { alert("Trainee registration form coming soon!"); setShowAddTraineeModal(false); }} style={{ width: "100%", padding: "12px", background: "#07885f", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "600", cursor: "pointer" }}>
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ADD TRAINER MODAL */}
+        {showAddTrainerModal && (
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setShowAddTrainerModal(false)}>
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", width: "500px" }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+                <h2 style={{ margin: 0, fontSize: "20px" }}>Add New Trainer</h2>
+                <button onClick={() => setShowAddTrainerModal(false)} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={24} /></button>
+              </div>
+              <p style={{ color: "#64748b", marginBottom: "20px" }}>Trainer creation form will open here. Backend endpoint is ready.</p>
+              <button onClick={() => { alert("Trainer creation form coming soon!"); setShowAddTrainerModal(false); }} style={{ width: "100%", padding: "12px", background: "#2563eb", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "600", cursor: "pointer" }}>
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function AdminNavItem({ icon, label, active, onClick }) {
+  return (
+    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "8px", border: "none", background: active ? "#07885f" : "transparent", color: active ? "#fff" : "#94a3b8", fontWeight: active ? "700" : "500", cursor: "pointer", textAlign: "left", width: "100%", transition: "all 0.2s" }}>
+      {icon} {label}
+    </button>
+  );
+}
+
+function StatCard({ label, value, detail, color }) {
+  return (
+    <div style={{ background: "#fff", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", borderTop: `4px solid ${color}` }}>
+      <div style={{ fontSize: "13px", color: "#64748b", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</div>
+      <div style={{ fontSize: "32px", fontWeight: "800", color: "#0f172a", margin: "8px 0" }}>{value}</div>
+      <div style={{ fontSize: "12px", color: "#94a3b8" }}>{detail}</div>
     </div>
   );
 }
