@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppDashboard from "./AppDashboard";
 import TraineeAuth from "./TraineeAuth";
 import TrainerAuth from "./TrainerAuth";
@@ -15,7 +15,27 @@ import {
   BarChart3,
   BookOpen,
   Target,
+  ClipboardCheck,
+  FileText,
+  MessageSquare,
+  Settings,
+  Search,
+  TrendingUp,
+  Award,
+  Video,
+  Upload,
+  ChevronRight,
+  RefreshCw,
+  X,
 } from "lucide-react";
+
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://localhost:5000";
+
+/* =========================================================
+   MAIN APP
+   ========================================================= */
 
 function App() {
   const [showRoles, setShowRoles] = useState(false);
@@ -28,7 +48,6 @@ function App() {
       const savedUser = localStorage.getItem(
         "capacityConnectCurrentUser"
       );
-
       return savedUser ? JSON.parse(savedUser) : null;
     } catch {
       return null;
@@ -42,7 +61,6 @@ function App() {
     );
 
     setCurrentUser(user);
-
     setShowTraineeAuth(false);
     setShowTrainerAuth(false);
     setShowAdminAuth(false);
@@ -51,18 +69,13 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem("capacityConnectCurrentUser");
-
     setCurrentUser(null);
-
     setShowTraineeAuth(false);
     setShowTrainerAuth(false);
     setShowAdminAuth(false);
     setShowRoles(false);
   };
 
-  // =========================
-  // TRAINEE DASHBOARD
-  // =========================
   if (currentUser?.role === "trainee") {
     return (
       <AppDashboard
@@ -72,9 +85,6 @@ function App() {
     );
   }
 
-  // =========================
-  // TRAINER DASHBOARD
-  // =========================
   if (currentUser?.role === "trainer") {
     return (
       <TrainerDashboard
@@ -84,9 +94,6 @@ function App() {
     );
   }
 
-  // =========================
-  // ADMIN DASHBOARD
-  // =========================
   if (currentUser?.role === "admin") {
     return (
       <AdminDashboard
@@ -96,9 +103,6 @@ function App() {
     );
   }
 
-  // =========================
-  // TRAINEE LOGIN / SIGNUP
-  // =========================
   if (showTraineeAuth) {
     return (
       <TraineeAuth
@@ -108,9 +112,6 @@ function App() {
     );
   }
 
-  // =========================
-  // TRAINER LOGIN
-  // =========================
   if (showTrainerAuth) {
     return (
       <TrainerAuth
@@ -120,9 +121,6 @@ function App() {
     );
   }
 
-  // =========================
-  // ADMIN LOGIN
-  // =========================
   if (showAdminAuth) {
     return (
       <AdminAuth
@@ -139,7 +137,6 @@ function App() {
           <div className="brand-mark">
             <Sparkles size={21} strokeWidth={2.5} />
           </div>
-
           <div>
             <div className="brand-name">Capacity</div>
             <div className="brand-subtitle">CONNECT</div>
@@ -177,9 +174,10 @@ function App() {
             </h1>
 
             <p className="hero-description">
-              Capacity Connect brings trainees, trainers and organizations
-              together through verified skills, personalized learning,
-              intelligent recommendations and measurable progress.
+              Capacity Connect brings trainees, trainers and
+              organizations together through verified skills,
+              personalized learning, intelligent recommendations
+              and measurable progress.
             </p>
 
             <div className="hero-actions">
@@ -204,12 +202,10 @@ function App() {
                 <CheckCircle2 size={17} />
                 Verified competency
               </div>
-
               <div>
                 <CheckCircle2 size={17} />
                 AI-powered guidance
               </div>
-
               <div>
                 <CheckCircle2 size={17} />
                 Role-based platform
@@ -226,7 +222,6 @@ function App() {
                   <div className="small-label">
                     CAPACITY CONNECT
                   </div>
-
                   <h3>Learning Intelligence</h3>
                 </div>
 
@@ -258,7 +253,6 @@ function App() {
                   <div className="mini-icon blue">
                     <Target size={19} />
                   </div>
-
                   <div>
                     <span>Skill Gap</span>
                     <strong>3 areas</strong>
@@ -269,7 +263,6 @@ function App() {
                   <div className="mini-icon orange">
                     <BookOpen size={19} />
                   </div>
-
                   <div>
                     <span>Learning Path</span>
                     <strong>42 hours</strong>
@@ -296,7 +289,6 @@ function App() {
               <div className="floating-icon">
                 <CheckCircle2 size={18} />
               </div>
-
               <div>
                 <span>Skill verified</span>
                 <strong>React · 6/7</strong>
@@ -307,7 +299,6 @@ function App() {
               <div className="floating-icon orange-bg">
                 <Users size={18} />
               </div>
-
               <div>
                 <span>Trainer Match</span>
                 <strong>92% match</strong>
@@ -316,14 +307,9 @@ function App() {
           </div>
         </section>
 
-        <section
-          className="section"
-          id="how-it-works"
-        >
+        <section className="section" id="how-it-works">
           <div className="section-heading">
-            <div className="section-badge">
-              HOW IT WORKS
-            </div>
+            <div className="section-badge">HOW IT WORKS</div>
 
             <h2>
               From claimed skills to verified capability.
@@ -412,14 +398,9 @@ function App() {
           </div>
         </section>
 
-        <section
-          className="final-cta"
-          id="about"
-        >
+        <section className="final-cta" id="about">
           <div>
-            <div className="section-badge">
-              CAPACITY CONNECT
-            </div>
+            <div className="section-badge">CAPACITY CONNECT</div>
 
             <h2>
               Turn learning into measurable capability.
@@ -462,13 +443,11 @@ function App() {
               Welcome to Capacity Connect
             </div>
 
-            <h2>
-              How would you like to continue?
-            </h2>
+            <h2>How would you like to continue?</h2>
 
             <p>
-              Select your role to enter the appropriate
-              Capacity Connect experience.
+              Select your role to enter the appropriate Capacity
+              Connect experience.
             </p>
 
             <div className="role-options">
@@ -515,7 +494,7 @@ function App() {
 }
 
 /* =========================================================
-   ADMIN DASHBOARD
+   ADMIN
    ========================================================= */
 
 function AdminDashboard({ user, onLogout }) {
@@ -531,7 +510,7 @@ function AdminDashboard({ user, onLogout }) {
         style={{
           maxWidth: "1100px",
           margin: "0 auto",
-          background: "#ffffff",
+          background: "#fff",
           borderRadius: "24px",
           padding: "40px",
           boxShadow: "0 20px 60px rgba(0,0,0,0.08)",
@@ -542,7 +521,6 @@ function AdminDashboard({ user, onLogout }) {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            gap: "20px",
           }}
         >
           <div>
@@ -557,21 +535,11 @@ function AdminDashboard({ user, onLogout }) {
               ORGANIZATION ADMIN
             </span>
 
-            <h1
-              style={{
-                margin: "8px 0 6px",
-                fontSize: "32px",
-              }}
-            >
+            <h1 style={{ margin: "8px 0 6px" }}>
               Admin Dashboard
             </h1>
 
-            <p
-              style={{
-                margin: 0,
-                color: "#64748b",
-              }}
-            >
+            <p style={{ color: "#64748b" }}>
               Welcome, {user?.fullName || "Administrator"}.
             </p>
           </div>
@@ -610,12 +578,7 @@ function AdminDashboard({ user, onLogout }) {
           >
             <ShieldCheck size={24} />
 
-            <h2
-              style={{
-                margin: 0,
-                fontSize: "20px",
-              }}
-            >
+            <h2 style={{ margin: 0 }}>
               Admin access verified
             </h2>
           </div>
@@ -628,8 +591,8 @@ function AdminDashboard({ user, onLogout }) {
             }}
           >
             The admin authentication flow is connected.
-            The full trainer and trainee management dashboard
-            will be implemented in the next stage.
+            Trainer and trainee management can be expanded from
+            this workspace.
           </p>
         </div>
       </div>
@@ -644,6 +607,67 @@ function AdminDashboard({ user, onLogout }) {
 function TrainerDashboard({ user, onLogout }) {
   const [activeSection, setActiveSection] =
     useState("dashboard");
+
+  const [trainees, setTrainees] = useState([]);
+  const [loadingTrainees, setLoadingTrainees] = useState(false);
+  const [traineeError, setTraineeError] = useState("");
+  const [selectedTrainee, setSelectedTrainee] =
+    useState(null);
+
+  const fetchTrainees = async () => {
+    try {
+      setLoadingTrainees(true);
+      setTraineeError("");
+
+      const response = await fetch(
+        `${API_BASE}/api/trainer/trainees`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || "Unable to fetch trainees."
+        );
+      }
+
+      setTrainees(data.trainees || []);
+    } catch (error) {
+      console.error("Trainer trainees error:", error);
+      setTraineeError(
+        "Unable to load trainees. Please try again."
+      );
+    } finally {
+           setLoadingTrainees(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTrainees();
+  }, []);
+
+  const totalSkills = useMemo(
+    () =>
+      trainees.reduce(
+        (total, trainee) =>
+          total + (trainee.skills?.length || 0),
+        0
+      ),
+    [trainees]
+  );
+
+  const verifiedSkills = useMemo(
+    () =>
+      trainees.reduce(
+        (total, trainee) =>
+          total +
+          (trainee.skills || []).filter(
+            (skill) => skill.isVerified
+          ).length,
+        0
+      ),
+    [trainees]
+  );
 
   return (
     <div className="trainer-dashboard">
@@ -675,42 +699,49 @@ function TrainerDashboard({ user, onLogout }) {
         <nav className="trainer-nav">
           <TrainerNavItem
             label="Dashboard"
+            icon={<BarChart3 size={18} />}
             active={activeSection === "dashboard"}
             onClick={() => setActiveSection("dashboard")}
           />
 
           <TrainerNavItem
             label="My Courses"
+            icon={<BookOpen size={18} />}
             active={activeSection === "courses"}
             onClick={() => setActiveSection("courses")}
           />
 
           <TrainerNavItem
             label="Trainees"
+            icon={<Users size={18} />}
             active={activeSection === "trainees"}
             onClick={() => setActiveSection("trainees")}
           />
 
           <TrainerNavItem
             label="Assessments"
+            icon={<ClipboardCheck size={18} />}
             active={activeSection === "assessments"}
             onClick={() => setActiveSection("assessments")}
           />
 
           <TrainerNavItem
             label="Resources"
+            icon={<FileText size={18} />}
             active={activeSection === "resources"}
             onClick={() => setActiveSection("resources")}
           />
 
           <TrainerNavItem
             label="Analytics"
+            icon={<TrendingUp size={18} />}
             active={activeSection === "analytics"}
             onClick={() => setActiveSection("analytics")}
           />
 
           <TrainerNavItem
             label="Feedback"
+            icon={<MessageSquare size={18} />}
             active={activeSection === "feedback"}
             onClick={() => setActiveSection("feedback")}
           />
@@ -721,6 +752,7 @@ function TrainerDashboard({ user, onLogout }) {
             className="trainer-settings"
             onClick={() => setActiveSection("settings")}
           >
+            <Settings size={17} />
             Settings
           </button>
 
@@ -775,6 +807,7 @@ function TrainerDashboard({ user, onLogout }) {
 
         {activeSection === "dashboard" && (
           <TrainerOverview
+            trainees={trainees}
             onNavigate={setActiveSection}
           />
         )}
@@ -784,11 +817,20 @@ function TrainerDashboard({ user, onLogout }) {
         )}
 
         {activeSection === "trainees" && (
-          <TrainerTrainees />
+          <TrainerTrainees
+            trainees={trainees}
+            loading={loadingTrainees}
+            error={traineeError}
+            onRefresh={fetchTrainees}
+            selectedTrainee={selectedTrainee}
+            setSelectedTrainee={setSelectedTrainee}
+          />
         )}
 
         {activeSection === "assessments" && (
-          <TrainerAssessments />
+          <TrainerAssessments
+            trainees={trainees}
+          />
         )}
 
         {activeSection === "resources" && (
@@ -796,7 +838,11 @@ function TrainerDashboard({ user, onLogout }) {
         )}
 
         {activeSection === "analytics" && (
-          <TrainerAnalytics />
+          <TrainerAnalytics
+            trainees={trainees}
+            totalSkills={totalSkills}
+            verifiedSkills={verifiedSkills}
+          />
         )}
 
         {activeSection === "feedback" && (
@@ -815,7 +861,12 @@ function TrainerDashboard({ user, onLogout }) {
    TRAINER NAV
    ========================================================= */
 
-function TrainerNavItem({ label, active, onClick }) {
+function TrainerNavItem({
+  label,
+  icon,
+  active,
+  onClick,
+}) {
   return (
     <button
       className={`trainer-nav-item ${
@@ -823,16 +874,45 @@ function TrainerNavItem({ label, active, onClick }) {
       }`}
       onClick={onClick}
     >
-      {label}
+      {icon}
+      <span>{label}</span>
     </button>
   );
 }
 
 /* =========================================================
-   TRAINER OVERVIEW
+   OVERVIEW
    ========================================================= */
 
-function TrainerOverview({ onNavigate }) {
+function TrainerOverview({
+  trainees,
+  onNavigate,
+}) {
+  const totalTrainees = trainees.length;
+
+  const activeTrainees = trainees.filter(
+    (trainee) => trainee.isActive
+  ).length;
+
+  const allSkills = trainees.flatMap(
+    (trainee) => trainee.skills || []
+  );
+
+  const verified = allSkills.filter(
+    (skill) => skill.isVerified
+  ).length;
+
+  const averageLevel =
+    allSkills.length > 0
+      ? (
+          allSkills.reduce(
+            (sum, skill) =>
+              sum + Number(skill.level || 0),
+            0
+          ) / allSkills.length
+        ).toFixed(1)
+      : "0.0";
+
   return (
     <div className="trainer-content">
       <div className="trainer-welcome">
@@ -844,8 +924,8 @@ function TrainerOverview({ onNavigate }) {
           </h2>
 
           <p>
-            Create courses, monitor trainee progress and
-            manage your learning workspace.
+            Monitor real trainee data, competency and
+            learning activity from one workspace.
           </p>
         </div>
 
@@ -861,25 +941,25 @@ function TrainerOverview({ onNavigate }) {
         <TrainerStat
           label="Active Courses"
           value="08"
-          detail="+2 this month"
+          detail="Learning workspace"
         />
 
         <TrainerStat
           label="Trainees"
-          value="126"
-          detail="18 active today"
+          value={String(totalTrainees)}
+          detail={`${activeTrainees} active users`}
         />
 
         <TrainerStat
-          label="Assessments"
-          value="24"
-          detail="6 pending review"
+          label="Verified Skills"
+          value={String(verified)}
+          detail={`${allSkills.length} total skill records`}
         />
 
         <TrainerStat
-          label="Course Completion"
-          value="78%"
-          detail="+6.4% this month"
+          label="Avg. Competency"
+          value={`${averageLevel}/7`}
+          detail="Across recorded skills"
         />
       </div>
 
@@ -887,102 +967,99 @@ function TrainerOverview({ onNavigate }) {
         <div className="trainer-panel">
           <div className="trainer-panel-header">
             <div>
-              <span>YOUR COURSES</span>
-              <h3>Course Management</h3>
-            </div>
-
-            <button
-              onClick={() => onNavigate("courses")}
-            >
-              View all
-            </button>
-          </div>
-
-          <div className="trainer-course-row">
-            <div className="trainer-course-icon blue">
-              WD
-            </div>
-
-            <div>
-              <strong>Web Development Fundamentals</strong>
-              <span>42 trainees · 76% completion</span>
-            </div>
-
-            <b>76%</b>
-          </div>
-
-          <div className="trainer-course-row">
-            <div className="trainer-course-icon orange">
-              JS
-            </div>
-
-            <div>
-              <strong>JavaScript Essentials</strong>
-              <span>31 trainees · 64% completion</span>
-            </div>
-
-            <b>64%</b>
-          </div>
-
-          <div className="trainer-course-row">
-            <div className="trainer-course-icon green">
-              UI
-            </div>
-
-            <div>
-              <strong>UI/UX Design Basics</strong>
-              <span>28 trainees · 88% completion</span>
-            </div>
-
-            <b>88%</b>
-          </div>
-        </div>
-
-        <div className="trainer-panel">
-          <div className="trainer-panel-header">
-            <div>
-              <span>TRAINEE ACTIVITY</span>
-              <h3>Recent Activity</h3>
+              <span>TRAINEE OVERVIEW</span>
+              <h3>Latest Trainees</h3>
             </div>
 
             <button
               onClick={() => onNavigate("trainees")}
             >
-              View trainees
+              View all
             </button>
           </div>
 
-          <div className="trainer-activity">
-            <div className="activity-avatar">
-              A
+          {trainees.slice(0, 4).map((trainee) => (
+            <div
+              className="trainer-activity"
+              key={trainee.id}
+            >
+              <div className="activity-avatar">
+                {(trainee.fullName || "T")
+                  .charAt(0)
+                  .toUpperCase()}
+              </div>
+
+              <div>
+                <strong>
+                  {trainee.fullName}
+                </strong>
+
+                <span>
+                  {trainee.course || "Course not added"} ·{" "}
+                  {trainee.skills?.length || 0} skills
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {trainees.length === 0 && (
+            <div className="trainer-empty-small">
+              No trainees available yet.
+            </div>
+          )}
+        </div>
+
+        <div className="trainer-panel">
+          <div className="trainer-panel-header">
+            <div>
+              <span>COMPETENCY SNAPSHOT</span>
+              <h3>Skill Distribution</h3>
             </div>
 
-            <div>
-              <strong>Arjun completed JavaScript Assessment</strong>
-              <span>Score: 82% · 12 minutes ago</span>
-            </div>
+            <button
+              onClick={() => onNavigate("analytics")}
+            >
+              Analytics
+            </button>
           </div>
 
-          <div className="trainer-activity">
-            <div className="activity-avatar">
-              P
-            </div>
+          <div className="overview-skill-list">
+            {getTopSkills(trainees, 5).map(
+              (skill) => (
+                <div
+                  className="overview-skill-row"
+                  key={skill.name}
+                >
+                  <div>
+                    <strong>{skill.name}</strong>
+                    <span>
+                      {skill.count} trainees
+                    </span>
+                  </div>
 
-            <div>
-              <strong>Priya enrolled in Web Development</strong>
-              <span>8 trainees joined · 1 hour ago</span>
-            </div>
-          </div>
+                  <div className="overview-skill-bar">
+                    <div
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (skill.average / 7) * 100
+                        )}%`,
+                      }}
+                    />
+                  </div>
 
-          <div className="trainer-activity">
-            <div className="activity-avatar">
-              R
-            </div>
+                  <b>
+                    {skill.average.toFixed(1)}/7
+                  </b>
+                </div>
+              )
+            )}
 
-            <div>
-              <strong>Rahul submitted an assessment</strong>
-              <span>Pending review · 2 hours ago</span>
-            </div>
+            {getTopSkills(trainees, 5).length === 0 && (
+              <div className="trainer-empty-small">
+                Skill data will appear here.
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -990,7 +1067,11 @@ function TrainerOverview({ onNavigate }) {
   );
 }
 
-function TrainerStat({ label, value, detail }) {
+function TrainerStat({
+  label,
+  value,
+  detail,
+}) {
   return (
     <div className="trainer-stat">
       <span>{label}</span>
@@ -1011,7 +1092,7 @@ function TrainerCourses() {
       title: "Web Development Fundamentals",
       category: "Web Development",
       trainees: 42,
-      completion: "76%",
+      completion: 76,
       status: "Published",
     },
     {
@@ -1019,7 +1100,7 @@ function TrainerCourses() {
       title: "JavaScript Essentials",
       category: "Programming",
       trainees: 31,
-      completion: "64%",
+      completion: 64,
       status: "Published",
     },
     {
@@ -1027,7 +1108,7 @@ function TrainerCourses() {
       title: "UI/UX Design Basics",
       category: "Design",
       trainees: 28,
-      completion: "88%",
+      completion: 88,
       status: "Published",
     },
     {
@@ -1035,7 +1116,7 @@ function TrainerCourses() {
       title: "React Development",
       category: "Web Development",
       trainees: 25,
-      completion: "52%",
+      completion: 52,
       status: "Draft",
     },
   ];
@@ -1044,10 +1125,15 @@ function TrainerCourses() {
     <div className="trainer-content">
       <div className="trainer-section-intro">
         <div>
-          <h2>Manage your courses</h2>
+          <span className="trainer-page-label">
+            CONTENT MANAGEMENT
+          </span>
+
+          <h2>My Courses</h2>
+
           <p>
             Create, organize and monitor your learning
-            content.
+            programs.
           </p>
         </div>
 
@@ -1083,16 +1169,21 @@ function TrainerCourses() {
               <h3>{course.title}</h3>
 
               <div className="trainer-course-meta">
-                <span>{course.trainees} trainees</span>
-                <span>{course.completion} complete</span>
+                <span>
+                  {course.trainees} trainees
+                </span>
+
+                <span>
+                  {course.completion}% complete
+                </span>
               </div>
 
               <div className="trainer-course-progress">
                 <div
                   style={{
-                    width: course.completion,
+                    width: `${course.completion}%`,
                   }}
-                ></div>
+                />
               </div>
 
               <div className="trainer-course-actions">
@@ -1111,39 +1202,580 @@ function TrainerCourses() {
    TRAINEES
    ========================================================= */
 
-function TrainerTrainees() {
-  const trainees = [
+function TrainerTrainees({
+  trainees,
+  loading,
+  error,
+  onRefresh,
+  selectedTrainee,
+  setSelectedTrainee,
+}) {
+  const [search, setSearch] = useState("");
+
+  const filteredTrainees = trainees.filter(
+    (trainee) => {
+      const query = search.toLowerCase();
+
+      return (
+        trainee.fullName
+          ?.toLowerCase()
+          .includes(query) ||
+        trainee.email
+          ?.toLowerCase()
+          .includes(query) ||
+        trainee.course
+          ?.toLowerCase()
+          .includes(query) ||
+        trainee.skills?.some((skill) =>
+          skill.name
+            ?.toLowerCase()
+            .includes(query)
+        )
+      );
+    }
+  );
+
+  return (
+    <div className="trainer-content">
+      <div className="trainer-section-intro">
+        <div>
+          <span className="trainer-page-label">
+            LEARNER MANAGEMENT
+          </span>
+
+          <h2>Trainee Profiles</h2>
+
+          <p>
+            Real trainee profiles fetched from the
+            Capacity Connect database.
+          </p>
+        </div>
+
+        <button
+          className="trainer-refresh-button"
+          onClick={onRefresh}
+          disabled={loading}
+        >
+          <RefreshCw
+            size={17}
+            className={
+              loading ? "spin-icon" : ""
+            }
+          />
+          {loading ? "Loading..." : "Refresh"}
+        </button>
+      </div>
+
+      <div className="trainee-toolbar">
+        <div className="trainee-search">
+          <Search size={18} />
+
+          <input
+            value={search}
+            onChange={(e) =>
+              setSearch(e.target.value)
+            }
+            placeholder="Search trainees, courses or skills..."
+          />
+        </div>
+
+        <div className="trainee-count">
+          {filteredTrainees.length} of{" "}
+          {trainees.length} trainees
+        </div>
+      </div>
+
+      {error && (
+        <div className="trainer-error-panel">
+          <strong>Unable to load trainees</strong>
+          <span>{error}</span>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="trainer-loading-panel">
+          <RefreshCw className="spin-icon" size={28} />
+          <h3>Loading trainee data...</h3>
+          <p>
+            Connecting to the Capacity Connect
+            database.
+          </p>
+        </div>
+      ) : (
+        <div className="trainer-table-panel">
+          <div className="trainer-table-header">
+            <span>Name</span>
+            <span>Education</span>
+            <span>Skills</span>
+            <span>Competency</span>
+            <span>Action</span>
+          </div>
+
+          {filteredTrainees.map((trainee) => {
+            const skills = trainee.skills || [];
+
+            const average =
+              skills.length > 0
+                ? (
+                    skills.reduce(
+                      (sum, skill) =>
+                        sum +
+                        Number(skill.level || 0),
+                      0
+                    ) / skills.length
+                  ).toFixed(1)
+                : "0.0";
+
+            const primarySkill =
+              skills[0]?.name || "No skills";
+
+            return (
+              <div
+                className="trainer-table-row"
+                key={trainee.id}
+              >
+                <div className="trainer-name-cell">
+                  <div className="table-avatar">
+                    {(trainee.fullName || "T")
+                      .charAt(0)
+                      .toUpperCase()}
+                  </div>
+
+                  <div>
+                    <strong>
+                      {trainee.fullName}
+                    </strong>
+
+                    <span>
+                      {trainee.email}
+                    </span>
+                  </div>
+                </div>
+
+                <span>
+                  {trainee.education ||
+                    "Not added"}
+                </span>
+
+                <div className="skill-tags-cell">
+                  <span className="skill-tag">
+                    {primarySkill}
+                  </span>
+
+                  {skills.length > 1 && (
+                    <span className="skill-more">
+                      +{skills.length - 1}
+                    </span>
+                  )}
+                </div>
+
+                <strong className="competency-badge">
+                  {average}/7
+                </strong>
+
+                <button
+                  className="view-profile-button"
+                  onClick={() =>
+                    setSelectedTrainee(
+                      trainee
+                    )
+                  }
+                >
+                  View Profile
+                  <ChevronRight size={15} />
+                </button>
+              </div>
+            );
+          })}
+
+          {!loading &&
+            filteredTrainees.length === 0 && (
+              <div className="trainer-empty-panel">
+                <div className="trainer-empty-icon">
+                  <Users size={25} />
+                </div>
+
+                <h3>No trainees found</h3>
+
+                <p>
+                  Try a different search term.
+                </p>
+              </div>
+            )}
+        </div>
+      )}
+
+      {selectedTrainee && (
+        <TraineeProfileModal
+          trainee={selectedTrainee}
+          onClose={() =>
+            setSelectedTrainee(null)
+          }
+        />
+      )}
+    </div>
+  );
+}
+
+/* =========================================================
+   TRAINEE PROFILE MODAL
+   ========================================================= */
+
+function TraineeProfileModal({
+  trainee,
+  onClose,
+}) {
+  const skills = trainee.skills || [];
+
+  const average =
+    skills.length > 0
+      ? (
+          skills.reduce(
+            (sum, skill) =>
+              sum + Number(skill.level || 0),
+            0
+          ) / skills.length
+        ).toFixed(1)
+      : "0.0";
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+    >
+      <div
+        className="trainee-profile-modal"
+        onClick={(e) =>
+          e.stopPropagation()
+        }
+      >
+        <button
+          className="modal-close"
+          onClick={onClose}
+        >
+          <X size={20} />
+        </button>
+
+        <div className="profile-modal-header">
+          <div className="large-profile-avatar">
+            {(trainee.fullName || "T")
+              .charAt(0)
+              .toUpperCase()}
+          </div>
+
+          <div>
+            <span className="trainer-page-label">
+              TRAINEE PROFILE
+            </span>
+
+            <h2>{trainee.fullName}</h2>
+
+            <p>{trainee.email}</p>
+          </div>
+        </div>
+
+        <div className="profile-info-grid">
+          <ProfileInfo
+            label="Education"
+            value={trainee.education}
+          />
+
+          <ProfileInfo
+            label="Course"
+            value={trainee.course}
+          />
+
+          <ProfileInfo
+            label="Institution"
+            value={trainee.institution}
+          />
+
+          <ProfileInfo
+            label="Academic Year"
+            value={trainee.year}
+          />
+
+          <ProfileInfo
+            label="Qualification"
+            value={trainee.qualification}
+          />
+
+          <ProfileInfo
+            label="Experience"
+            value={trainee.experience}
+          />
+
+          <ProfileInfo
+            label="Interests"
+            value={trainee.interests}
+          />
+
+          <ProfileInfo
+            label="Account Status"
+            value={
+              trainee.isActive
+                ? "Active"
+                : "Inactive"
+            }
+          />
+        </div>
+
+        <div className="profile-skills-section">
+          <div className="profile-section-heading">
+            <div>
+              <span>COMPETENCY</span>
+              <h3>Verified Skill Profile</h3>
+            </div>
+
+            <strong>
+              {average}/7 average
+            </strong>
+          </div>
+
+          {skills.length === 0 ? (
+            <p className="profile-muted">
+              No skills added yet.
+            </p>
+          ) : (
+            skills.map((skill) => (
+              <div
+                className="profile-skill-row"
+                key={skill.name}
+              >
+                <div>
+                  <strong>
+                    {skill.name}
+                  </strong>
+
+                  <span>
+                    {skill.isVerified
+                      ? "Verified"
+                      : "Not verified"}
+                  </span>
+                </div>
+
+                <div className="profile-skill-progress">
+                  <div
+                    style={{
+                      width: `${
+                        (Number(
+                          skill.level || 0
+                        ) /
+                          7) *
+                        100
+                      }%`,
+                    }}
+                  />
+                </div>
+
+                <b>
+                  {skill.level || 0}/7
+                </b>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileInfo({
+  label,
+  value,
+}) {
+  return (
+    <div className="profile-info-item">
+      <span>{label}</span>
+      <strong>{value || "Not added"}</strong>
+    </div>
+  );
+}
+
+/* =========================================================
+   ASSESSMENTS
+   ========================================================= */
+
+function TrainerAssessments({
+  trainees,
+}) {
+  const skills = trainees.flatMap(
+    (trainee) => trainee.skills || []
+  );
+
+  const pending = skills.filter(
+    (skill) =>
+      skill.assessmentStatus ===
+      "pending" ||
+      skill.assessmentStatus ===
+      "in_review"
+  ).length;
+
+  const completed = skills.filter(
+    (skill) =>
+      skill.assessmentStatus ===
+      "completed"
+  ).length;
+
+  const notStarted = skills.filter(
+    (skill) =>
+      !skill.assessmentStatus ||
+      skill.assessmentStatus ===
+      "not_started"
+  ).length;
+
+  return (
+    <div className="trainer-content">
+      <div className="trainer-section-intro">
+        <div>
+          <span className="trainer-page-label">
+            COMPETENCY VERIFICATION
+          </span>
+
+          <h2>Assessment Management</h2>
+
+          <p>
+            Monitor skill assessments and identify
+            trainees who need competency verification.
+          </p>
+        </div>
+
+        <button className="trainer-primary-action">
+          + Create Assessment
+        </button>
+      </div>
+
+      <div className="trainer-stat-grid">
+        <TrainerStat
+          label="Pending Review"
+          value={String(pending)}
+          detail="Needs trainer attention"
+        />
+
+        <TrainerStat
+          label="Completed"
+          value={String(completed)}
+          detail="Verified assessment records"
+        />
+
+        <TrainerStat
+          label="Not Started"
+          value={String(notStarted)}
+          detail="Trainees can begin"
+        />
+
+        <TrainerStat
+          label="Total Skills"
+          value={String(skills.length)}
+          detail="Assessment-ready records"
+        />
+      </div>
+
+      <div className="assessment-board">
+        <div className="assessment-board-header">
+          <div>
+            <span>ASSESSMENT PIPELINE</span>
+            <h3>Skill verification status</h3>
+          </div>
+        </div>
+
+        <div className="assessment-columns">
+          <AssessmentColumn
+            title="Not Started"
+            count={notStarted}
+            items={skills.filter(
+              (skill) =>
+                !skill.assessmentStatus ||
+                skill.assessmentStatus ===
+                  "not_started"
+            )}
+          />
+
+          <AssessmentColumn
+            title="In Review"
+            count={pending}
+            items={skills.filter(
+              (skill) =>
+                skill.assessmentStatus ===
+                  "pending" ||
+                skill.assessmentStatus ===
+                  "in_review"
+            )}
+          />
+
+          <AssessmentColumn
+            title="Completed"
+            count={completed}
+            items={skills.filter(
+              (skill) =>
+                skill.assessmentStatus ===
+                "completed"
+            )}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AssessmentColumn({
+  title,
+  count,
+  items,
+}) {
+  return (
+    <div className="assessment-column">
+      <div className="assessment-column-title">
+        <strong>{title}</strong>
+        <span>{count}</span>
+      </div>
+
+      {items.slice(0, 5).map(
+        (item, index) => (
+          <div
+            className="assessment-card"
+            key={`${item.name}-${index}`}
+          >
+            <strong>{item.name}</strong>
+            <span>
+              Level {item.level || 0}/7
+            </span>
+          </div>
+        )
+      )}
+
+      {items.length === 0 && (
+        <div className="assessment-empty">
+          Nothing here
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =========================================================
+   RESOURCES
+   ========================================================= */
+
+function TrainerResources() {
+  const resources = [
     {
-      name: "Arjun Patel",
-      role: "Trainee",
-      skill: "Web Development",
-      level: "6/7",
-      progress: "82%",
-      course: "Web Development Fundamentals",
+      icon: <Video size={22} />,
+      title: "Recorded Lectures",
+      count: "14",
+      text: "Upload and organize trainer lecture videos.",
     },
     {
-      name: "Priya Shah",
-      role: "Trainee",
-      skill: "JavaScript",
-      level: "5/7",
-      progress: "74%",
-      course: "JavaScript Essentials",
+      icon: <FileText size={22} />,
+      title: "Study Materials",
+      count: "24",
+      text: "Presentations, PDFs and learning documents.",
     },
     {
-      name: "Rahul Mehta",
-      role: "Trainee",
-      skill: "UI/UX",
-      level: "4/7",
-      progress: "61%",
-      course: "UI/UX Design Basics",
-    },
-    {
-      name: "Neha Patel",
-      role: "Trainee",
-      skill: "React",
-      level: "3/7",
-      progress: "48%",
-      course: "React Development",
+      icon: <BookOpen size={22} />,
+      title: "Course Library",
+      count: "18",
+      text: "Reusable resources for active courses.",
     },
   ];
 
@@ -1151,135 +1783,457 @@ function TrainerTrainees() {
     <div className="trainer-content">
       <div className="trainer-section-intro">
         <div>
-          <h2>Trainee Profiles</h2>
+          <span className="trainer-page-label">
+            KNOWLEDGE LIBRARY
+          </span>
+
+          <h2>Learning Resources</h2>
+
           <p>
-            View trainee skills, progress, assessments and
-            learning activity.
+            Organize lectures, presentations and
+            study material for your trainees.
           </p>
         </div>
+
+        <button className="trainer-primary-action">
+          <Upload size={17} />
+          Upload Resource
+        </button>
       </div>
 
-      <div className="trainer-table-panel">
-        <div className="trainer-table-header">
-          <span>Name</span>
-          <span>Primary Skill</span>
-          <span>Competency</span>
-          <span>Course Progress</span>
-          <span>Action</span>
-        </div>
-
-        {trainees.map((trainee) => (
+      <div className="resource-grid">
+        {resources.map((resource) => (
           <div
-            className="trainer-table-row"
-            key={trainee.name}
+            className="resource-card"
+            key={resource.title}
           >
-            <div className="trainer-name-cell">
-              <div className="table-avatar">
-                {trainee.name.charAt(0)}
-              </div>
-
-              <div>
-                <strong>{trainee.name}</strong>
-                <span>{trainee.course}</span>
-              </div>
+            <div className="resource-card-icon">
+              {resource.icon}
             </div>
 
-            <span>{trainee.skill}</span>
-
-            <strong className="competency-badge">
-              {trainee.level}
-            </strong>
-
-            <div className="progress-cell">
-              <div className="small-progress">
-                <div
-                  style={{
-                    width: trainee.progress,
-                  }}
-                ></div>
-              </div>
-
-              <span>{trainee.progress}</span>
+            <div>
+              <span>{resource.title}</span>
+              <strong>{resource.count}</strong>
+              <p>{resource.text}</p>
             </div>
 
-            <button className="view-profile-button">
-              View Profile
+            <button>
+              Manage
+              <ChevronRight size={16} />
             </button>
           </div>
         ))}
+      </div>
+
+      <div className="resource-upload-panel">
+        <div className="resource-upload-icon">
+          <Upload size={25} />
+        </div>
+
+        <div>
+          <h3>Trainer Resource Workspace</h3>
+
+          <p>
+            Add recorded lectures, presentations and
+            study materials here for centralized
+            trainee access.
+          </p>
+        </div>
+
+        <button className="trainer-secondary-action">
+          Add Resource
+        </button>
       </div>
     </div>
   );
 }
 
 /* =========================================================
-   OTHER LMS SECTIONS
+   ANALYTICS
    ========================================================= */
 
-function TrainerAssessments() {
-  return (
-    <TrainerPlaceholder
-      title="Assessment Management"
-      description="Create questionnaires, review trainee submissions and monitor assessment performance."
-      cards={[
-        ["Pending Reviews", "06"],
-        ["Active Assessments", "12"],
-        ["Completed", "184"],
-      ]}
-    />
+function TrainerAnalytics({
+  trainees,
+  totalSkills,
+  verifiedSkills,
+}) {
+  const skillData = getTopSkills(
+    trainees,
+    7
   );
-}
 
-function TrainerResources() {
-  return (
-    <TrainerPlaceholder
-      title="Learning Resources"
-      description="Manage presentations, recorded lectures, study material and course resources."
-      cards={[
-        ["Uploaded Resources", "38"],
-        ["Videos", "14"],
-        ["Study Materials", "24"],
-      ]}
-    />
+  const levelCounts = [0, 0, 0, 0, 0, 0, 0, 0];
+
+  trainees.forEach((trainee) => {
+    (trainee.skills || []).forEach(
+      (skill) => {
+        const level = Math.max(
+          0,
+          Math.min(
+            7,
+            Number(skill.level || 0)
+          )
+        );
+
+        levelCounts[level]++;
+      }
+    );
+  });
+
+  const maxLevelCount = Math.max(
+    ...levelCounts,
+    1
   );
-}
 
-function TrainerAnalytics() {
-  return (
-    <TrainerPlaceholder
-      title="Training Analytics"
-      description="Monitor course completion, trainee performance and competency development."
-      cards={[
-        ["Avg. Completion", "78%"],
-        ["Avg. Score", "81%"],
-        ["Active Learners", "126"],
-      ]}
-    />
-  );
-}
+  const verifiedPercentage =
+    totalSkills > 0
+      ? Math.round(
+          (verifiedSkills /
+            totalSkills) *
+            100
+        )
+      : 0;
 
-function TrainerFeedback() {
-  return (
-    <TrainerPlaceholder
-      title="Trainee Feedback"
-      description="Review feedback submitted by trainees about courses and learning experiences."
-      cards={[
-        ["Responses", "94"],
-        ["Avg. Rating", "4.6/5"],
-        ["Pending", "08"],
-      ]}
-    />
-  );
-}
-
-function TrainerSettings({ user }) {
   return (
     <div className="trainer-content">
       <div className="trainer-section-intro">
         <div>
-          <h2>Trainer Settings</h2>
+          <span className="trainer-page-label">
+            PERFORMANCE INTELLIGENCE
+          </span>
+
+          <h2>Training Analytics</h2>
+
           <p>
-            Manage your trainer workspace preferences.
+            Understand competency levels,
+            skill distribution and verification
+            progress across trainees.
+          </p>
+        </div>
+      </div>
+
+      <div className="trainer-stat-grid">
+        <TrainerStat
+          label="Trainees"
+          value={String(trainees.length)}
+          detail="Database records"
+        />
+
+        <TrainerStat
+          label="Skill Records"
+          value={String(totalSkills)}
+          detail="Across all trainees"
+        />
+
+        <TrainerStat
+          label="Verified"
+          value={`${verifiedPercentage}%`}
+          detail={`${verifiedSkills} verified skills`}
+        />
+
+        <TrainerStat
+          label="Average Level"
+          value={`${calculateAverageLevel(
+            trainees
+          )}/7`}
+          detail="Current competency"
+        />
+      </div>
+
+      <div className="analytics-grid">
+        <div className="analytics-panel">
+          <div className="analytics-panel-header">
+            <div>
+              <span>SKILL PERFORMANCE</span>
+              <h3>Average competency by skill</h3>
+            </div>
+          </div>
+
+          <div className="bar-chart">
+            {skillData.length === 0 ? (
+              <div className="analytics-empty">
+                No skill data available.
+              </div>
+            ) : (
+              skillData.map((skill) => (
+                <div
+                  className="bar-item"
+                  key={skill.name}
+                >
+                  <div className="bar-value">
+                    {skill.average.toFixed(1)}
+                  </div>
+
+                  <div className="bar-track">
+                    <div
+                      className="bar-fill"
+                      style={{
+                        height: `${Math.max(
+                          6,
+                          (skill.average / 7) *
+                            100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+
+                  <span>
+                    {skill.name.length > 11
+                      ? `${skill.name.slice(
+                          0,
+                          11
+                        )}…`
+                      : skill.name}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="analytics-panel">
+          <div className="analytics-panel-header">
+            <div>
+              <span>LEVEL DISTRIBUTION</span>
+              <h3>Competency scale 0–7</h3>
+            </div>
+          </div>
+
+          <div className="level-chart">
+            {levelCounts.map(
+              (count, level) => (
+                <div
+                  className="level-row"
+                  key={level}
+                >
+                  <span>
+                    Level {level}
+                  </span>
+
+                  <div className="level-track">
+                    <div
+                      className="level-fill"
+                      style={{
+                        width: `${
+                          (count /
+                            maxLevelCount) *
+                          100
+                        }%`,
+                      }}
+                    />
+                  </div>
+
+                  <strong>{count}</strong>
+                </div>
+              )
+            )}
+          </div>
+
+          <div className="analytics-legend">
+            <span>
+              <i className="legend-dot red" />
+              0–3 Developing
+            </span>
+
+            <span>
+              <i className="legend-dot orange" />
+              4–5 Intermediate
+            </span>
+
+            <span>
+              <i className="legend-dot green" />
+              6–7 Strong
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="analytics-panel competency-overview">
+        <div className="analytics-panel-header">
+          <div>
+            <span>TOP SKILLS</span>
+            <h3>Competency overview</h3>
+          </div>
+        </div>
+
+        <div className="competency-list">
+          {skillData.map((skill) => (
+            <div
+              className="competency-list-row"
+              key={skill.name}
+            >
+              <div className="competency-name">
+                <div className="competency-icon">
+                  <Award size={18} />
+                </div>
+
+                <div>
+                  <strong>
+                    {skill.name}
+                  </strong>
+
+                  <span>
+                    {skill.count} trainee
+                    {skill.count !== 1
+                      ? "s"
+                      : ""}
+                  </span>
+                </div>
+              </div>
+
+              <div className="competency-progress">
+                <div>
+                  <span>
+                    Average level
+                  </span>
+
+                  <strong>
+                    {skill.average.toFixed(
+                      1
+                    )}
+                    /7
+                  </strong>
+                </div>
+
+                <div className="competency-track">
+                  <div
+                    style={{
+                      width: `${
+                        (skill.average /
+                          7) *
+                        100
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {skillData.length === 0 && (
+            <div className="analytics-empty">
+              Skill analytics will appear
+              when trainees add skills.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   FEEDBACK
+   ========================================================= */
+
+function TrainerFeedback() {
+  const feedback = [
+    {
+      initials: "TR",
+      title: "Course feedback",
+      text: "Review trainee comments and identify areas where learning content can be improved.",
+      tag: "Learning Quality",
+    },
+    {
+      initials: "PF",
+      title: "Performance feedback",
+      text: "Use trainee responses to understand learning difficulties and support needs.",
+      tag: "Performance",
+    },
+    {
+      initials: "AI",
+      title: "Improvement insights",
+      text: "Organize feedback around courses, resources and competency development.",
+      tag: "Insights",
+    },
+  ];
+
+  return (
+    <div className="trainer-content">
+      <div className="trainer-section-intro">
+        <div>
+          <span className="trainer-page-label">
+            LEARNER VOICE
+          </span>
+
+          <h2>Trainee Feedback</h2>
+
+          <p>
+            Review feedback and turn learner
+            experiences into actionable improvements.
+          </p>
+        </div>
+
+        <button className="trainer-secondary-action">
+          Export Feedback
+        </button>
+      </div>
+
+      <div className="feedback-grid">
+        {feedback.map((item) => (
+          <div
+            className="feedback-card"
+            key={item.title}
+          >
+            <div className="feedback-card-top">
+              <div className="feedback-avatar">
+                {item.initials}
+              </div>
+
+              <span>{item.tag}</span>
+            </div>
+
+            <h3>{item.title}</h3>
+
+            <p>{item.text}</p>
+
+            <button>
+              Open Workspace
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="feedback-summary-panel">
+        <div className="feedback-summary-icon">
+          <MessageSquare size={24} />
+        </div>
+
+        <div>
+          <span>FEEDBACK WORKSPACE</span>
+          <h3>Ready for trainee responses</h3>
+
+          <p>
+            The interface is prepared for course,
+            trainer and learning-resource feedback.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+
+function TrainerSettings({
+  user,
+}) {
+  return (
+    <div className="trainer-content">
+      <div className="trainer-section-intro">
+        <div>
+          <span className="trainer-page-label">
+            ACCOUNT
+          </span>
+
+          <h2>Trainer Settings</h2>
+
+          <p>
+            Review your trainer profile and workspace
+            information.
           </p>
         </div>
       </div>
@@ -1287,12 +2241,23 @@ function TrainerSettings({ user }) {
       <div className="trainer-settings-panel">
         <div>
           <span>Trainer Name</span>
-          <strong>{user?.fullName || "Trainer"}</strong>
+          <strong>
+            {user?.fullName || "Trainer"}
+          </strong>
         </div>
 
         <div>
           <span>Email</span>
-          <strong>{user?.email || "Not added"}</strong>
+          <strong>
+            {user?.email || "Not added"}
+          </strong>
+        </div>
+
+        <div>
+          <span>Phone</span>
+          <strong>
+            {user?.phone || "Not added"}
+          </strong>
         </div>
 
         <div>
@@ -1303,35 +2268,40 @@ function TrainerSettings({ user }) {
         <div>
           <span>Qualification</span>
           <strong>
-            {user?.qualification || "Not added"}
+            {user?.qualification ||
+              "Not added"}
           </strong>
         </div>
 
         <div>
           <span>Experience</span>
           <strong>
-            {user?.experience || "Not added"}
+            {user?.experience ||
+              "Not added"}
           </strong>
         </div>
 
         <div>
           <span>Specialization</span>
           <strong>
-            {user?.specialization || "Not added"}
+            {user?.specialization ||
+              "Not added"}
           </strong>
         </div>
 
         <div>
           <span>Organization</span>
           <strong>
-            {user?.organization || "Not added"}
+            {user?.organization ||
+              "Not added"}
           </strong>
         </div>
 
         <div>
           <span>Designation</span>
           <strong>
-            {user?.designation || "Not added"}
+            {user?.designation ||
+              "Not added"}
           </strong>
         </div>
       </div>
@@ -1339,46 +2309,74 @@ function TrainerSettings({ user }) {
   );
 }
 
-function TrainerPlaceholder({
-  title,
-  description,
-  cards,
-}) {
-  return (
-    <div className="trainer-content">
-      <div className="trainer-section-intro">
-        <div>
-          <h2>{title}</h2>
-          <p>{description}</p>
-        </div>
-      </div>
+/* =========================================================
+   HELPERS
+   ========================================================= */
 
-      <div className="trainer-stat-grid">
-        {cards.map(([label, value]) => (
-          <TrainerStat
-            key={label}
-            label={label}
-            value={value}
-            detail="Task 2 frontend prototype"
-          />
-        ))}
-      </div>
+function getTopSkills(
+  trainees,
+  limit = 7
+) {
+  const map = {};
 
-      <div className="trainer-empty-panel">
-        <div className="trainer-empty-icon">
-          <Sparkles size={24} />
-        </div>
+  trainees.forEach((trainee) => {
+    (trainee.skills || []).forEach(
+      (skill) => {
+        const name = skill.name;
 
-        <h3>Workspace ready</h3>
+        if (!name) return;
 
-        <p>
-          This section is prepared for the next frontend
-          implementation stage. Backend, database and AI
-          integrations are intentionally excluded from Task 2.
-        </p>
-      </div>
-    </div>
+        if (!map[name]) {
+          map[name] = {
+            name,
+            count: 0,
+            total: 0,
+          };
+        }
+
+        map[name].count += 1;
+        map[name].total += Number(
+          skill.level || 0
+        );
+      }
+    );
+  });
+
+  return Object.values(map)
+    .map((skill) => ({
+      ...skill,
+      average:
+        skill.count > 0
+          ? skill.total / skill.count
+          : 0,
+    }))
+    .sort(
+      (a, b) =>
+        b.count - a.count ||
+        b.average - a.average
+    )
+    .slice(0, limit);
+}
+
+function calculateAverageLevel(
+  trainees
+) {
+  const skills = trainees.flatMap(
+    (trainee) => trainee.skills || []
   );
+
+  if (!skills.length) {
+    return "0.0";
+  }
+
+  const average =
+    skills.reduce(
+      (sum, skill) =>
+        sum + Number(skill.level || 0),
+      0
+    ) / skills.length;
+
+  return average.toFixed(1);
 }
 
 /* =========================================================

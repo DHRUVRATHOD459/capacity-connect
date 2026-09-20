@@ -1778,6 +1778,199 @@ app.get("/api/trainer/trainees", async (req, res) => {
   }
 });
 // ==========================================
+// ADMIN LOGIN - PASSWORD CHECK + OTP
+// ==========================================
+
+app.post("/api/admin-login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required.",
+      });
+    }
+
+    const emailKey = email.trim().toLowerCase();
+
+    const userResult = await pool.query(
+      `SELECT id, full_name, email, phone, password_hash, role, email_verified, is_active, created_at
+       FROM users
+       WHERE email = $1 AND role = 'admin'
+       LIMIT 1`,
+      [emailKey]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid admin credentials.",
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    if (!user.is_active) {
+      return res.status(403).json({
+        success: false,
+        message: "Admin account is inactive.",
+      });
+    }
+
+    const passwordMatches = await bcrypt.compare(password, user.password_hash);
+
+    if (!passwordMatches) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid admin credentials.",
+      });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    adminSessionStore.set(emailKey, {
+      otp,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+      userId: user.id,
+    });
+
+    console.log(`Admin OTP for ${emailKey}: ${otp}`);
+
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: "Capacity Connect", email: SENDER_EMAIL },
+        to: [{ email: emailKey }],
+        subject: "Capacity Connect Admin Login OTP",
+        htmlContent: `
+          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 40px auto; padding: 30px; border: 1px solid #e5ebe8; border-radius: 18px; background: #ffffff;">
+            <h2 style="color: #07885f; margin-bottom: 10px;">Capacity Connect</h2>
+            <p style="color: #555; font-size: 15px;">Your Admin login verification OTP is:</p>
+            <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; padding: 18px; margin: 25px 0; background: #eaf8f3; color: #07885f; text-align: center; border-radius: 12px;">${otp}</div>
+            <p style="color: #555; font-size: 14px;">This OTP is valid for <strong>5 minutes</strong>.</p>
+            <hr style="border: none; border-top: 1px solid #eeeeee; margin: 25px 0;" />
+            <p style="color: #999; font-size: 12px;">This is an automated email from Capacity Connect.</p>
+          </div>
+        `,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Admin Brevo error:", data);
+      adminSessionStore.delete(emailKey);
+      return res.status(500).json({
+        success: false,
+        message: data?.message || "Failed to send admin OTP.",
+      });
+    }
+
+    console.log(`Admin OTP sent successfully to ${emailKey}`);
+
+    return res.json({
+      success: true,
+      message: "Admin OTP sent successfully.",
+    });
+  } catch (error) {
+    console.error("Admin login error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong during admin login.",
+    });
+  }
+});
+
+// ==========================================
+// ADMIN OTP VERIFICATION
+// ==========================================
+
+app.post("/api/admin-verify-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required.",
+      });
+    }
+
+    const emailKey = email.trim().toLowerCase();
+    const storedData = adminSessionStore.get(emailKey);
+
+    if (!storedData) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP not found. Please login again.",
+      });
+    }
+
+    if (Date.now() > storedData.expiresAt) {
+      adminSessionStore.delete(emailKey);
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired. Please login again.",
+      });
+    }
+
+    if (storedData.otp !== otp.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "Incorrect OTP.",
+      });
+    }
+
+    const adminResult = await pool.query(
+      `SELECT id, full_name, email, phone, role, email_verified, is_active, created_at
+       FROM users
+       WHERE id = $1 AND role = 'admin'
+       LIMIT 1`,
+      [storedData.userId]
+    );
+
+    if (adminResult.rows.length === 0) {
+      adminSessionStore.delete(emailKey);
+      return res.status(404).json({
+        success: false,
+        message: "Admin account not found.",
+      });
+    }
+
+    const admin = adminResult.rows[0];
+    adminSessionStore.delete(emailKey);
+
+    return res.json({
+      success: true,
+      message: "Admin login successful.",
+      user: {
+        id: admin.id,
+        fullName: admin.full_name,
+        email: admin.email,
+        phone: admin.phone,
+        role: admin.role,
+        emailVerified: admin.email_verified,
+        isActive: admin.is_active,
+        createdAt: admin.created_at,
+      },
+    });
+  } catch (error) {
+    console.error("Admin OTP verification error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while verifying admin OTP.",
+    });
+  }
+});
+
+
+// ==========================================
 // START SERVER
 // ==========================================
 
